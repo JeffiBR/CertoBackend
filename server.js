@@ -113,6 +113,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Rota raiz (informativa)
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Preco Certo Backend',
+    status: 'online',
+    message: 'API ativa. Use /api para listar endpoints e /api/health para status.',
+    docs: {
+      api: '/api',
+      health: '/api/health'
+    }
+  });
+});
+
 // Health check simples para plataformas que validam /health
 app.get('/health', (req, res) => {
   res.json({

@@ -113,6 +113,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Health check simples para plataformas que validam /health
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: NODE_ENV
+  });
+});
+
 // Rota wake-up (para manter o servidor ativo)
 app.get('/api/wake-up', (req, res) => {
   res.json({

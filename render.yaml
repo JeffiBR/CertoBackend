@@ -1,0 +1,39 @@
+# Configuração do Render para deploy automático
+# Documentação: https://render.com/docs/blueprint-spec
+
+services:
+  # Web Service - API Backend
+  - type: web
+    name: thunderplay-iptv
+    rootDir: backend
+    runtime: node
+    region: oregon # ou ohio, frankfurt, singapore, etc.
+    plan: free # free, starter, standard, pro
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    
+    # Configurações de saúde
+    healthCheckPath: /api/health
+    
+    # Variáveis de ambiente
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://SEU-USUARIO.github.io
+      - key: GITHUB_TOKEN
+        sync: false # Defina manualmente no dashboard do Render
+      - key: GITHUB_OWNER
+        value: JeffiBR
+      - key: GITHUB_REPO
+        value: Dados
+      - key: GITHUB_BRANCH
+        value: main
+      - key: BACKUP_ENABLED
+        value: true
+      - key: REQUIRE_USER_CONTEXT
+        value: true
+
+# Dica: Após criar o serviço, acesse o dashboard do Render
+# e configure o GITHUB_TOKEN nas variáveis de ambiente

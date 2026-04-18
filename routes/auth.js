@@ -30,6 +30,7 @@ const DEFAULT_GROUP_PAGES = {
 
 const AUTH_SECRET = String(process.env.AUTH_SECRET || 'preco-certo-node-auth-secret');
 const TOKEN_TTL_SECONDS = Number(process.env.AUTH_TOKEN_TTL_SECONDS || 2592000);
+const ACTIVE_SESSION_IDLE_SECONDS = Number(process.env.AUTH_ACTIVE_SESSION_IDLE_SECONDS || 90);
 
 function nowIso() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -133,6 +134,28 @@ function httpError(status, message) {
   return err;
 }
 
+function parseDateMs(value) {
+  const ms = Date.parse(String(value || ''));
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function isSessionOnline(session) {
+  if (!session || typeof session !== 'object') return false;
+  const lastSeenMs = parseDateMs(session.last_seen || session.updated_at || session.created_at);
+  if (!lastSeenMs) return false;
+  const idleMs = Math.max(15, ACTIVE_SESSION_IDLE_SECONDS) * 1000;
+  return (Date.now() - lastSeenMs) <= idleMs;
+}
+
+function createSessionMeta() {
+  const ts = nowIso();
+  return {
+    id: crypto.randomUUID().replace(/-/g, ''),
+    created_at: ts,
+    last_seen: ts
+  };
+}
+
 function sanitizeUserOutput(user) {
   return {
     id: user.id,
@@ -226,8 +249,16 @@ async function getCurrentUser(req) {
   const payload = decodeToken(token);
   const userId = String(payload.sub || '').trim();
   if (!userId) throw httpError(401, 'Token invalido');
+  const sessionId = String(payload.sid || '').trim();
+  if (!sessionId) throw httpError(401, 'Sessao invalida. Faca login novamente');
   const user = await readUser(userId);
   if (!user || user.active === false) throw httpError(401, 'Usuario invalido');
+  if (!user.active_session || String(user.active_session.id || '') !== sessionId) {
+    throw httpError(401, 'Sessao encerrada. Faca login novamente');
+  }
+  if (!isSessionOnline(user.active_session)) {
+    throw httpError(401, 'Sessao expirada por inatividade. Faca login novamente');
+  }
   return user;
 }
 
@@ -387,9 +418,19 @@ router.post('/auth/login', async (req, res) => withErrors(res, async () => {
   if (!user || user.active === false) throw httpError(401, 'Usuario ou senha invalidos');
   if (!verifyPassword(password, user.password || {})) throw httpError(401, 'Usuario ou senha invalidos');
 
+  if (isSessionOnline(user.active_session)) {
+    throw httpError(409, 'Usuario ja esta online em outro dispositivo');
+  }
+
   const nowTs = Math.floor(Date.now() / 1000);
+  const session = createSessionMeta();
+  user.active_session = session;
+  user.updated_at = nowIso();
+  await writeUser(user, `Atualizar sessao ativa do usuario ${user.id}`);
+
   const token = createToken({
     sub: user.id,
+    sid: session.id,
     role: normalizeRole(user.role),
     email: user.email,
     iat: nowTs,
@@ -401,6 +442,10 @@ router.post('/auth/login', async (req, res) => withErrors(res, async () => {
     data: {
       token,
       expires_in: TOKEN_TTL_SECONDS,
+      session: {
+        id: session.id,
+        idle_timeout_seconds: ACTIVE_SESSION_IDLE_SECONDS
+      },
       user: sanitizeUserOutput(user),
       allowed_pages: await getAllowedPagesForUser(user)
     }
@@ -416,6 +461,23 @@ router.get('/auth/me', async (req, res) => withErrors(res, async () => {
       allowed_pages: await getAllowedPagesForUser(user)
     }
   });
+}));
+
+router.post('/auth/ping', async (req, res) => withErrors(res, async () => {
+  const user = await getCurrentUser(req);
+  user.active_session = user.active_session || {};
+  user.active_session.last_seen = nowIso();
+  user.updated_at = nowIso();
+  await writeUser(user, `Atualizar presenca da sessao ${user.id}`);
+  res.json({ success: true, data: { online: true, idle_timeout_seconds: ACTIVE_SESSION_IDLE_SECONDS } });
+}));
+
+router.post('/auth/logout', async (req, res) => withErrors(res, async () => {
+  const user = await getCurrentUser(req);
+  user.active_session = null;
+  user.updated_at = nowIso();
+  await writeUser(user, `Encerrar sessao ativa do usuario ${user.id}`);
+  res.json({ success: true });
 }));
 
 router.patch('/auth/me', async (req, res) => withErrors(res, async () => {

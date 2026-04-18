@@ -15,7 +15,16 @@ class PrecificacaoModel {
 
     const data = await this.storage.readFile(this.filePath);
     if (data === null) {
-      throw new Error('Falha ao ler arquivo de precificacao no GitHub');
+      // Namespace de usuario ainda sem arquivo: inicializa com lista vazia.
+      const init = await this.storage.writeFile(
+        this.filePath,
+        [],
+        'Inicializar Atelie/precificacao.json'
+      );
+      if (!init.success) {
+        throw new Error(init.error || 'Falha ao inicializar arquivo de precificacao no GitHub');
+      }
+      return [];
     }
     return data || [];
   }

@@ -30,7 +30,7 @@ const DEFAULT_GROUP_PAGES = {
 
 const AUTH_SECRET = String(process.env.AUTH_SECRET || 'preco-certo-node-auth-secret');
 const TOKEN_TTL_SECONDS = Number(process.env.AUTH_TOKEN_TTL_SECONDS || 2592000);
-const ACTIVE_SESSION_IDLE_SECONDS = Number(process.env.AUTH_ACTIVE_SESSION_IDLE_SECONDS || 90);
+const ACTIVE_SESSION_IDLE_SECONDS = Number(process.env.AUTH_ACTIVE_SESSION_IDLE_SECONDS || 900);
 
 function nowIso() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');

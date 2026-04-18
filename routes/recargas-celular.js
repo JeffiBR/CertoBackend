@@ -361,4 +361,19 @@ router.patch('/:id/admin', async (req, res) => {
   }
 });
 
+router.delete('/:id/admin', async (req, res) => {
+  try {
+    if (!isDeveloper(req)) {
+      return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode excluir recargas' });
+    }
+    const { id } = req.params;
+    const removed = await model.delete(id);
+    if (!removed) return res.status(404).json({ success: false, error: 'Recarga nao encontrada' });
+    return res.json({ success: true, data: { id: removed.id } });
+  } catch (error) {
+    console.error('Erro ao excluir recarga:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

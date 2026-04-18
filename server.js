@@ -113,6 +113,7 @@ const mensagensRoutes = require('./routes/mensagens');
 const precificacaoRoutes = require('./routes/precificacao');
 const recebiveisRoutes = require('./routes/recebiveis');
 const configuracoesRoutes = require('./routes/configuracoes');
+const recargasCelularRoutes = require('./routes/recargas-celular');
 const authRoutes = require('./routes/auth');
 
 // =============================================
@@ -171,6 +172,7 @@ app.use('/api/mensagens', mensagensRoutes);
 app.use('/api/precificacao', precificacaoRoutes);
 app.use('/api/recebiveis', recebiveisRoutes);
 app.use('/api/configuracoes', configuracoesRoutes);
+app.use('/api/recargas-celular', recargasCelularRoutes);
 
 // Rota de info da API
 app.get('/api', (req, res) => {
@@ -242,6 +244,15 @@ app.get('/api', (req, res) => {
         update: 'PATCH /api/recebiveis/:id',
         delete: 'DELETE /api/recebiveis/:id'
       },
+      recargas_celular: {
+        list: 'GET /api/recargas-celular',
+        create: 'POST /api/recargas-celular',
+        config_get: 'GET /api/recargas-celular/config',
+        config_update_by_dev: 'PUT /api/recargas-celular/config',
+        pix_config_get: 'GET /api/recargas-celular/pix-config',
+        pix_config_update_by_dev: 'PUT /api/recargas-celular/pix-config',
+        update_by_dev: 'PATCH /api/recargas-celular/:id/admin'
+      },
       configuracoes: {
         get: 'GET /api/configuracoes',
         update: 'PUT /api/configuracoes'
@@ -298,6 +309,25 @@ async function ensureRepoFiles() {
     { path: 'data/mensagens_cobranca.json', content: [] },
     { path: 'Atelie/precificacao.json', content: [] },
     { path: 'Atelie/recebiveis.json', content: [] },
+    { path: 'Atelie/recargas_celular.json', content: [] },
+    {
+      path: 'Atelie/recargas_celular_config.json',
+      content: {
+        operadoras: {
+          Tim: { ativa: true, planos: [{ credito: 10, paga: 10 }, { credito: 15, paga: 15 }, { credito: 20, paga: 20 }, { credito: 30, paga: 30 }, { credito: 50, paga: 50 }] },
+          Vivo: { ativa: true, planos: [{ credito: 10, paga: 10 }, { credito: 15, paga: 15 }, { credito: 20, paga: 20 }, { credito: 30, paga: 30 }, { credito: 50, paga: 50 }] },
+          Claro: { ativa: true, planos: [{ credito: 10, paga: 10 }, { credito: 15, paga: 15 }, { credito: 20, paga: 20 }, { credito: 30, paga: 30 }, { credito: 50, paga: 50 }] }
+        }
+      }
+    },
+    {
+      path: 'Atelie/recargas_pix_config.json',
+      content: {
+        pix_key: '82999158412',
+        pix_merchant_name: 'PRECO CERTO',
+        pix_city: 'ARAPIRACA'
+      }
+    },
     { path: 'Atelie/configuracoes_usuario.json', content: { tecidos: {}, forros: {}, aviamentos: {} } },
     { path: 'Atelie/images/index.json', content: [] }
   ];

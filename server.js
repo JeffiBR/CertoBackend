@@ -58,6 +58,7 @@ app.use(cors({
     'Authorization',
     'X-Requested-With',
     'X-User-Id',
+    'X-User-Role',
     'X-User-Email',
     'X-User-Name',
     'X-Clerk-User-Id'

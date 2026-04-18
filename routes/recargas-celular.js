@@ -211,6 +211,19 @@ function findPlanoByCredito(planos, credito) {
   return (Array.isArray(planos) ? planos : []).find((p) => parseMoney(p.credito).toFixed(2) === key) || null;
 }
 
+async function removeRecargaById(id) {
+  if (model && typeof model.delete === 'function') {
+    return model.delete(id);
+  }
+  if (model && typeof model.remove === 'function') {
+    return model.remove(id);
+  }
+  if (model && typeof model.deleteById === 'function') {
+    return model.deleteById(id);
+  }
+  throw new Error('Metodo de exclusao indisponivel no modelo de recargas');
+}
+
 router.get('/config', async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -367,7 +380,7 @@ router.delete('/:id/admin', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode excluir recargas' });
     }
     const { id } = req.params;
-    const removed = await model.delete(id);
+    const removed = await removeRecargaById(id);
     if (!removed) return res.status(404).json({ success: false, error: 'Recarga nao encontrada' });
     return res.json({ success: true, data: { id: removed.id } });
   } catch (error) {

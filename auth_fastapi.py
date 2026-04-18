@@ -7,6 +7,7 @@ import re
 import secrets
 import time
 import uuid
+from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -306,8 +307,24 @@ class UserUpdateInput(BaseModel):
 
 app = FastAPI(title="Preco Certo FastAPI Auth", version="1.0.0")
 
-allowed_origins_raw = os.getenv("AUTH_CORS_ALLOWED_ORIGINS", "")
-allowed_origins = [x.strip() for x in allowed_origins_raw.split(",") if x.strip()]
+def normalize_origin(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    if raw == "*":
+        return "*"
+    parsed = urlparse(raw)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return raw.rstrip("/")
+
+
+allowed_origins_raw = os.getenv("AUTH_CORS_ALLOWED_ORIGINS", "") or os.getenv("CORS_ALLOWED_ORIGINS", "")
+allowed_origins: List[str] = []
+for item in allowed_origins_raw.split(","):
+    normalized = normalize_origin(item)
+    if normalized and normalized not in allowed_origins:
+        allowed_origins.append(normalized)
 if not allowed_origins:
     allowed_origins = ["*"]
 

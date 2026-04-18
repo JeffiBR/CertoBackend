@@ -21,7 +21,7 @@ function normalizeOrigin(value) {
 }
 
 function getAllowedOrigins() {
-  const raw = process.env.CORS_ALLOWED_ORIGINS || '';
+  const raw = process.env.CORS_ALLOWED_ORIGINS || process.env.AUTH_CORS_ALLOWED_ORIGINS || '';
   const origins = raw
     .split(',')
     .map((item) => normalizeOrigin(item))
@@ -49,7 +49,8 @@ app.use(cors({
     if (allowedOrigins.includes('*')) return callback(null, true);
     // Em produÃ§Ã£o, aceita apenas origens explicitamente permitidas
     if (allowedOrigins.includes(normalized)) return callback(null, true);
-    return callback(new Error(`CORS bloqueado para origem: ${normalized}`));
+    // Nao dispara erro 500 por CORS; apenas nega headers CORS para a origem.
+    return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [

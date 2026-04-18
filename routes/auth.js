@@ -363,8 +363,23 @@ router.post('/auth/login', async (req, res) => withErrors(res, async () => {
   const { emailIdx, phoneIdx } = await loadIndexes();
   let userId = emailIdx[normalizeEmail(identifier)];
   if (!userId) {
-    const p = normalizePhone(identifier);
-    userId = phoneIdx[p];
+    const rawPhone = normalizePhone(identifier);
+    const candidates = [];
+    if (rawPhone) {
+      candidates.push(rawPhone);
+      if (rawPhone.length === 10 || rawPhone.length === 11) {
+        candidates.push(`55${rawPhone}`);
+      }
+      if (rawPhone.startsWith('55') && (rawPhone.length === 12 || rawPhone.length === 13)) {
+        candidates.push(rawPhone.slice(2));
+      }
+    }
+
+    const uniqueCandidates = [...new Set(candidates)];
+    for (const phoneCandidate of uniqueCandidates) {
+      userId = phoneIdx[phoneCandidate];
+      if (userId) break;
+    }
   }
   if (!userId) throw httpError(401, 'Usuario ou senha invalidos');
 

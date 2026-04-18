@@ -8,11 +8,23 @@ const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const REQUIRE_USER_CONTEXT = String(process.env.REQUIRE_USER_CONTEXT || 'true').toLowerCase() !== 'false';
 
+function normalizeOrigin(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw === '*') return '*';
+  try {
+    const url = new URL(raw);
+    return `${url.protocol}//${url.host}`;
+  } catch (_) {
+    return raw.replace(/\/+$/, '');
+  }
+}
+
 function getAllowedOrigins() {
   const raw = process.env.CORS_ALLOWED_ORIGINS || '';
   const origins = raw
     .split(',')
-    .map((item) => item.trim())
+    .map((item) => normalizeOrigin(item))
     .filter(Boolean);
 
   if (origins.length > 0) return origins;
@@ -31,11 +43,13 @@ app.use(cors({
   origin(origin, callback) {
     // Permite tools/scripts sem Origin (curl, postman, health checks)
     if (!origin) return callback(null, true);
+    const normalized = normalizeOrigin(origin);
     // Em dev, sem CORS_ALLOWED_ORIGINS, libera tudo
     if (allowedOrigins.length === 0 && NODE_ENV !== 'production') return callback(null, true);
+    if (allowedOrigins.includes('*')) return callback(null, true);
     // Em produÃ§Ã£o, aceita apenas origens explicitamente permitidas
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error(`CORS bloqueado para origem: ${origin}`));
+    if (allowedOrigins.includes(normalized)) return callback(null, true);
+    return callback(new Error(`CORS bloqueado para origem: ${normalized}`));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
@@ -97,6 +111,7 @@ const mensagensRoutes = require('./routes/mensagens');
 const precificacaoRoutes = require('./routes/precificacao');
 const recebiveisRoutes = require('./routes/recebiveis');
 const configuracoesRoutes = require('./routes/configuracoes');
+const authRoutes = require('./routes/auth');
 
 // =============================================
 // ROTAS
@@ -145,6 +160,7 @@ app.get('/api/wake-up', (req, res) => {
 });
 
 // Rotas da API
+app.use(authRoutes);
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/renovacoes', renovacoesRoutes);
 app.use('/api/servidores', servidoresRoutes);

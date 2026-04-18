@@ -1,0 +1,24 @@
+﻿services:
+  - type: web
+    name: preco-certo-auth
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements-fastapi.txt
+    startCommand: uvicorn auth_fastapi:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: AUTH_CORS_ALLOWED_ORIGINS
+        value: https://SEU-USUARIO.github.io
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_OWNER
+        value: JeffiBR
+      - key: GITHUB_REPO
+        value: Dados
+      - key: GITHUB_BRANCH
+        value: main
+      - key: AUTH_SECRET
+        sync: false
+      - key: AUTH_TOKEN_TTL_SECONDS
+        value: 2592000

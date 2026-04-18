@@ -86,11 +86,32 @@ function getDefaultConfig() {
 function sanitizePixConfig(data) {
   const payload = data && typeof data === 'object' ? data : {};
   const keyRaw = String(payload.pix_key || payload.chave_pix || '').trim();
+  const typeRaw = String(payload.pix_key_type || payload.chave_tipo || payload.key_type || '').trim().toLowerCase();
   const merchantRaw = String(payload.pix_merchant_name || payload.merchant_name || 'PRECO CERTO').trim();
   const cityRaw = String(payload.pix_city || payload.city || 'ARAPIRACA').trim();
+  const allowedTypes = new Set(['cpf', 'cnpj', 'telefone', 'aleatoria']);
+  const pixKeyType = allowedTypes.has(typeRaw) ? typeRaw : 'telefone';
+  let normalizedKey = keyRaw;
+
+  if (pixKeyType === 'cpf') {
+    normalizedKey = keyRaw.replace(/\D+/g, '');
+    if (normalizedKey && normalizedKey.length !== 11) throw new Error('CPF PIX invalido');
+  } else if (pixKeyType === 'cnpj') {
+    normalizedKey = keyRaw.replace(/\D+/g, '');
+    if (normalizedKey && normalizedKey.length !== 14) throw new Error('CNPJ PIX invalido');
+  } else if (pixKeyType === 'telefone') {
+    const digits = keyRaw.replace(/\D+/g, '');
+    if (!digits) normalizedKey = '';
+    else if (digits.length === 10 || digits.length === 11) normalizedKey = `+55${digits}`;
+    else if (digits.length === 12 || digits.length === 13) normalizedKey = `+${digits}`;
+    else throw new Error('Telefone PIX invalido');
+  } else {
+    normalizedKey = keyRaw;
+  }
 
   return {
-    pix_key: keyRaw,
+    pix_key: normalizedKey,
+    pix_key_type: pixKeyType,
     pix_merchant_name: merchantRaw || 'PRECO CERTO',
     pix_city: cityRaw || 'ARAPIRACA'
   };
@@ -152,6 +173,7 @@ async function loadPixConfig() {
   if (!storage.isConfigured()) {
     return sanitizePixConfig({
       pix_key: process.env.DEFAULT_PIX_KEY || '82999158412',
+      pix_key_type: process.env.DEFAULT_PIX_KEY_TYPE || 'telefone',
       pix_merchant_name: process.env.DEFAULT_PIX_MERCHANT_NAME || 'PRECO CERTO',
       pix_city: process.env.DEFAULT_PIX_CITY || 'ARAPIRACA'
     });
@@ -160,6 +182,7 @@ async function loadPixConfig() {
   if (!raw) {
     return sanitizePixConfig({
       pix_key: process.env.DEFAULT_PIX_KEY || '82999158412',
+      pix_key_type: process.env.DEFAULT_PIX_KEY_TYPE || 'telefone',
       pix_merchant_name: process.env.DEFAULT_PIX_MERCHANT_NAME || 'PRECO CERTO',
       pix_city: process.env.DEFAULT_PIX_CITY || 'ARAPIRACA'
     });

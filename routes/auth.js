@@ -10,7 +10,7 @@ const PHONE_INDEX_PATH = 'auth/index_by_phone.json';
 const GROUP_PAGES_PATH = 'auth/group_pages.json';
 
 const DEFAULT_GROUP_PAGES = {
-  usuario: ['index.html', 'precificacao.html', 'produtos-atelie.html', 'configuracoes.html'],
+  usuario: ['index.html', 'precificacao.html', 'produtos-atelie.html', 'configuracoes.html', 'recarga-celular.html', 'historico-compras.html'],
   administrador: [
     'index.html',
     'dashboard.html',
@@ -23,7 +23,9 @@ const DEFAULT_GROUP_PAGES = {
     'recebiveis.html',
     'precificacao.html',
     'produtos-atelie.html',
-    'configuracoes.html'
+    'configuracoes.html',
+    'recarga-celular.html',
+    'historico-compras.html'
   ],
   desenvolvedor: ['*']
 };

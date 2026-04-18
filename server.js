@@ -324,6 +324,7 @@ async function ensureRepoFiles() {
       path: 'Atelie/recargas_pix_config.json',
       content: {
         pix_key: '82999158412',
+        pix_key_type: 'telefone',
         pix_merchant_name: 'PRECO CERTO',
         pix_city: 'ARAPIRACA'
       }

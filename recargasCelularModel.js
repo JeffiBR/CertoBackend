@@ -67,6 +67,25 @@ class RecargasCelularModel {
     await this.saveAll(items, `Atualizar recarga celular #${items[index].id}`);
     return items[index];
   }
+
+  async delete(id) {
+    const items = await this.getAll();
+    const index = items.findIndex((r) => String(r.id) === String(id));
+    if (index < 0) return null;
+    const removed = items[index];
+    items.splice(index, 1);
+    await this.saveAll(items, `Excluir recarga celular #${removed.id}`);
+    return removed;
+  }
+
+  // Alias para compatibilidade entre versoes antigas/novas do route handler
+  async remove(id) {
+    return this.delete(id);
+  }
+
+  async deleteById(id) {
+    return this.delete(id);
+  }
 }
 
 module.exports = { RecargasCelularModel };

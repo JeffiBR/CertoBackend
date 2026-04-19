@@ -114,6 +114,7 @@ const precificacaoRoutes = require('./routes/precificacao');
 const recebiveisRoutes = require('./routes/recebiveis');
 const configuracoesRoutes = require('./routes/configuracoes');
 const recargasCelularRoutes = require('./routes/recargas-celular');
+const marketplaceRoutes = require('./routes/marketplace');
 const authRoutes = require('./routes/auth');
 
 // =============================================
@@ -173,6 +174,7 @@ app.use('/api/precificacao', precificacaoRoutes);
 app.use('/api/recebiveis', recebiveisRoutes);
 app.use('/api/configuracoes', configuracoesRoutes);
 app.use('/api/recargas-celular', recargasCelularRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
 
 // Rota de info da API
 app.get('/api', (req, res) => {
@@ -253,6 +255,15 @@ app.get('/api', (req, res) => {
         pix_config_update_by_dev: 'PUT /api/recargas-celular/pix-config',
         update_by_dev: 'PATCH /api/recargas-celular/:id/admin'
       },
+      marketplace: {
+        products_list: 'GET /api/marketplace/products',
+        products_create_by_dev: 'POST /api/marketplace/products',
+        products_update_by_dev: 'PATCH /api/marketplace/products/:id',
+        products_delete_by_dev: 'DELETE /api/marketplace/products/:id',
+        orders_list: 'GET /api/marketplace/orders',
+        orders_create: 'POST /api/marketplace/orders',
+        orders_update_by_dev: 'PATCH /api/marketplace/orders/:id/admin'
+      },
       configuracoes: {
         get: 'GET /api/configuracoes',
         update: 'PUT /api/configuracoes'
@@ -329,6 +340,8 @@ async function ensureRepoFiles() {
         pix_city: 'ARAPIRACA'
       }
     },
+    { path: 'Atelie/marketplace_products.json', content: [] },
+    { path: 'Atelie/marketplace_orders.json', content: [] },
     { path: 'Atelie/configuracoes_usuario.json', content: { tecidos: {}, forros: {}, aviamentos: {} } },
     { path: 'Atelie/images/index.json', content: [] }
   ];

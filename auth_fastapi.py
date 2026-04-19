@@ -83,8 +83,9 @@ PHONE_INDEX_PATH = "auth/index_by_phone.json"
 GROUP_PAGES_PATH = "auth/group_pages.json"
 
 DEFAULT_GROUP_PAGES = {
-    "usuario": ["index.html", "precificacao.html", "produtos-atelie.html", "configuracoes.html"],
+    "usuario": ["marketplace.html", "index.html", "precificacao.html", "produtos-atelie.html", "configuracoes.html", "recarga-celular.html", "historico-compras.html"],
     "administrador": [
+        "marketplace.html",
         "index.html",
         "dashboard.html",
         "renovacoes.html",
@@ -97,6 +98,8 @@ DEFAULT_GROUP_PAGES = {
         "precificacao.html",
         "produtos-atelie.html",
         "configuracoes.html",
+        "recarga-celular.html",
+        "historico-compras.html",
     ],
     "desenvolvedor": ["*"],
 }

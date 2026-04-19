@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rotas de Configurações de Precificação por usuário
  */
 
@@ -78,11 +78,11 @@ router.get('/', async (req, res) => {
 router.put('/', async (req, res) => {
   try {
     if (!storage.isConfigured()) {
-      return res.status(400).json({ success: false, error: 'GitHub Storage nao configurado' });
+      return res.status(400).json({ success: false, error: 'GitHub Storage não configurado' });
     }
 
     const safeConfig = sanitizeConfig(req.body || {});
-    const result = await storage.writeFile(FILE_PATH, safeConfig, 'Atualizar configuracoes do usuario');
+    const result = await storage.writeFile(FILE_PATH, safeConfig, 'Atualizar configurações do usuario');
     if (!result.success) {
       return res.status(500).json({ success: false, error: result.error || 'Falha ao salvar configuracoes' });
     }
@@ -95,4 +95,5 @@ router.put('/', async (req, res) => {
 });
 
 module.exports = router;
+
 

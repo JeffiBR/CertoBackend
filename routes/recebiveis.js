@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rotas de Recebiveis (Atelie)
  */
 
@@ -23,7 +23,7 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const item = await recebiveisModel.getById(id);
-    if (!item) return res.status(404).json({ success: false, error: 'Recebivel nao encontrado' });
+    if (!item) return res.status(404).json({ success: false, error: 'Recebível não encontrado' });
     res.json({ success: true, data: item });
   } catch (error) {
     console.error('Erro ao buscar recebivel:', error);
@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
     }
 
     const novoItem = await recebiveisModel.create(payload);
-    console.log('Recebivel criado:', novoItem.id);
+    console.log('Recebível criado:', novoItem.id);
     res.status(201).json({ success: true, id: novoItem.id, data: novoItem });
   } catch (error) {
     console.error('Erro ao criar recebivel:', error);
@@ -52,7 +52,7 @@ router.patch('/:id', async (req, res) => {
     const { id } = req.params;
     const updates = req.body || {};
     const atualizado = await recebiveisModel.update(id, updates);
-    if (!atualizado) return res.status(404).json({ success: false, error: 'Recebivel nao encontrado' });
+    if (!atualizado) return res.status(404).json({ success: false, error: 'Recebível não encontrado' });
     res.json({ success: true, data: atualizado });
   } catch (error) {
     console.error('Erro ao atualizar recebivel:', error);
@@ -64,7 +64,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const ok = await recebiveisModel.delete(id);
-    if (!ok) return res.status(404).json({ success: false, error: 'Recebivel nao encontrado' });
+    if (!ok) return res.status(404).json({ success: false, error: 'Recebível não encontrado' });
     res.json({ success: true });
   } catch (error) {
     console.error('Erro ao remover recebivel:', error);

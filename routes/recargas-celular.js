@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rotas de Recarga de Celular
  * - Cliente: criar e listar suas recargas
  * - Desenvolvedor: listar todas, atualizar status/comentario e configurar operadoras/precos
@@ -95,16 +95,16 @@ function sanitizePixConfig(data) {
 
   if (pixKeyType === 'cpf') {
     normalizedKey = keyRaw.replace(/\D+/g, '');
-    if (normalizedKey && normalizedKey.length !== 11) throw new Error('CPF PIX invalido');
+    if (normalizedKey && normalizedKey.length !== 11) throw new Error('CPF PIX inválido');
   } else if (pixKeyType === 'cnpj') {
     normalizedKey = keyRaw.replace(/\D+/g, '');
-    if (normalizedKey && normalizedKey.length !== 14) throw new Error('CNPJ PIX invalido');
+    if (normalizedKey && normalizedKey.length !== 14) throw new Error('CNPJ PIX inválido');
   } else if (pixKeyType === 'telefone') {
     const digits = keyRaw.replace(/\D+/g, '');
     if (!digits) normalizedKey = '';
     else if (digits.length === 10 || digits.length === 11) normalizedKey = `+55${digits}`;
     else if (digits.length === 12 || digits.length === 13) normalizedKey = `+${digits}`;
-    else throw new Error('Telefone PIX invalido');
+    else throw new Error('Telefone PIX inválido');
   } else {
     normalizedKey = keyRaw;
   }
@@ -155,12 +155,12 @@ async function loadConfig() {
 }
 
 async function saveConfig(config) {
-  if (!storage.isConfigured()) throw new Error('GitHub Storage nao configurado');
+  if (!storage.isConfigured()) throw new Error('GitHub Storage não configurado');
   const safe = sanitizeConfig(config);
   const result = await storage.writeFile(
     CONFIG_FILE_PATH,
     safe,
-    'Atualizar configuracoes de recarga celular',
+    'Atualizar configurações de recarga celular',
     { skipNamespace: true, skipBackup: true }
   );
   if (!result || !result.success) {
@@ -191,13 +191,13 @@ async function loadPixConfig() {
 }
 
 async function savePixConfig(config) {
-  if (!storage.isConfigured()) throw new Error('GitHub Storage nao configurado');
+  if (!storage.isConfigured()) throw new Error('GitHub Storage não configurado');
   const safe = sanitizePixConfig(config);
   if (!safe.pix_key) throw new Error('Informe a chave PIX');
   const result = await storage.writeFile(
     PIX_CONFIG_FILE_PATH,
     safe,
-    'Atualizar configuracoes PIX da recarga celular',
+    'Atualizar configurações PIX da recarga celular',
     { skipNamespace: true, skipBackup: true }
   );
   if (!result || !result.success) {
@@ -221,17 +221,17 @@ async function removeRecargaById(id) {
   if (model && typeof model.deleteById === 'function') {
     return model.deleteById(id);
   }
-  throw new Error('Metodo de exclusao indisponivel no modelo de recargas');
+  throw new Error('Método de exclusão indisponível no modelo de recargas');
 }
 
 router.get('/config', async (req, res) => {
   try {
     const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuario nao autenticado' });
+    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
     const cfg = await loadConfig();
     return res.json({ success: true, data: cfg });
   } catch (error) {
-    console.error('Erro ao buscar configuracao de recargas:', error);
+    console.error('Erro ao buscar configuração de recargas:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -239,13 +239,13 @@ router.get('/config', async (req, res) => {
 router.put('/config', async (req, res) => {
   try {
     if (!isDeveloper(req)) {
-      return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode alterar configuracoes de recarga' });
+      return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode alterar configurações de recarga' });
     }
     const payload = req.body || {};
     const saved = await saveConfig(payload);
     return res.json({ success: true, data: saved });
   } catch (error) {
-    console.error('Erro ao salvar configuracao de recargas:', error);
+    console.error('Erro ao salvar configuração de recargas:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -253,11 +253,11 @@ router.put('/config', async (req, res) => {
 router.get('/pix-config', async (req, res) => {
   try {
     const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuario nao autenticado' });
+    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
     const cfg = await loadPixConfig();
     return res.json({ success: true, data: cfg });
   } catch (error) {
-    console.error('Erro ao buscar configuracao PIX:', error);
+    console.error('Erro ao buscar configuração PIX:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -265,13 +265,13 @@ router.get('/pix-config', async (req, res) => {
 router.put('/pix-config', async (req, res) => {
   try {
     if (!isDeveloper(req)) {
-      return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode alterar configuracoes PIX' });
+      return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode alterar configurações PIX' });
     }
     const payload = req.body || {};
     const saved = await savePixConfig(payload);
     return res.json({ success: true, data: saved });
   } catch (error) {
-    console.error('Erro ao salvar configuracao PIX:', error);
+    console.error('Erro ao salvar configuração PIX:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -279,7 +279,7 @@ router.put('/pix-config', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuario nao autenticado' });
+    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
 
     const items = await model.getAll();
     if (isDeveloper(req)) {
@@ -297,7 +297,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuario nao autenticado' });
+    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
 
     const payload = req.body || {};
     const numero = normalizePhone(payload.numero);
@@ -307,15 +307,15 @@ router.post('/', async (req, res) => {
     const cfg = await loadConfig();
 
     if (numero.length < 10 || numero.length > 11) {
-      return res.status(400).json({ success: false, error: 'Numero de celular invalido (com DDD)' });
+      return res.status(400).json({ success: false, error: 'Número de celular inválido (com DDD)' });
     }
     if (!operadora) {
-      return res.status(400).json({ success: false, error: 'Operadora invalida. Use Tim, Vivo ou Claro' });
+      return res.status(400).json({ success: false, error: 'Operadora inválida. Use Tim, Vivo ou Claro' });
     }
 
     const opCfg = cfg.operadoras && cfg.operadoras[operadora] ? cfg.operadoras[operadora] : null;
     if (!opCfg) {
-      return res.status(400).json({ success: false, error: 'Operadora nao configurada' });
+      return res.status(400).json({ success: false, error: 'Operadora não configurada' });
     }
     if (opCfg.ativa === false) {
       return res.status(409).json({ success: false, error: `Operadora ${operadora} inativa no momento` });
@@ -323,7 +323,7 @@ router.post('/', async (req, res) => {
 
     const plano = findPlanoByCredito(opCfg.planos, valorCredito);
     if (!plano) {
-      return res.status(400).json({ success: false, error: 'Valor de credito nao permitido para esta operadora' });
+      return res.status(400).json({ success: false, error: 'Valor de crédito não permitido para esta operadora' });
     }
 
     const created = await model.create({
@@ -358,7 +358,7 @@ router.patch('/:id/admin', async (req, res) => {
     const comentario = String(payload.comentario_desenvolvedor || '').trim();
 
     if (!ALLOWED_STATUS.has(status)) {
-      return res.status(400).json({ success: false, error: 'Status invalido. Use aguardando_pagamento, em_processo, concluido ou erro' });
+      return res.status(400).json({ success: false, error: 'Status inválido. Use aguardando_pagamento, em_processo, concluido ou erro' });
     }
 
     const updated = await model.update(id, {
@@ -366,7 +366,7 @@ router.patch('/:id/admin', async (req, res) => {
       comentario_desenvolvedor: comentario
     });
 
-    if (!updated) return res.status(404).json({ success: false, error: 'Recarga nao encontrada' });
+    if (!updated) return res.status(404).json({ success: false, error: 'Recarga não encontrada' });
     return res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Erro ao atualizar recarga:', error);
@@ -381,7 +381,7 @@ router.delete('/:id/admin', async (req, res) => {
     }
     const { id } = req.params;
     const removed = await removeRecargaById(id);
-    if (!removed) return res.status(404).json({ success: false, error: 'Recarga nao encontrada' });
+    if (!removed) return res.status(404).json({ success: false, error: 'Recarga não encontrada' });
     return res.json({ success: true, data: { id: removed.id } });
   } catch (error) {
     console.error('Erro ao excluir recarga:', error);
@@ -390,3 +390,4 @@ router.delete('/:id/admin', async (req, res) => {
 });
 
 module.exports = router;
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rotas de Marketplace
  * - Cliente/Admin: listar produtos ativos, criar/listar pedidos
  * - Desenvolvedor: gerenciar produtos e atualizar pedidos
@@ -102,7 +102,7 @@ function formatOrderItem(product, qty) {
 router.get('/products', async (req, res) => {
   try {
     const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuario nao autenticado' });
+    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
 
     const items = await model.getProducts();
     const ordered = items.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
@@ -120,7 +120,7 @@ router.get('/products', async (req, res) => {
 router.get('/categories', async (req, res) => {
   try {
     const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuario nao autenticado' });
+    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
     const categories = await model.getCategories();
     return res.json({ success: true, count: categories.length, data: categories });
   } catch (error) {
@@ -154,11 +154,11 @@ router.delete('/categories/:categoria', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode excluir categorias' });
     }
     const categoria = sanitizeCategory(req.params.categoria);
-    if (!categoria) return res.status(400).json({ success: false, error: 'Categoria invalida' });
+    if (!categoria) return res.status(400).json({ success: false, error: 'Categoria inválida' });
     const current = await model.getCategories();
     const next = current.filter((x) => x.toLowerCase() !== categoria.toLowerCase());
     if (next.length === current.length) {
-      return res.status(404).json({ success: false, error: 'Categoria nao encontrada' });
+      return res.status(404).json({ success: false, error: 'Categoria não encontrada' });
     }
     const saved = await model.saveCategories(next, `Excluir categoria marketplace: ${categoria}`);
     return res.json({ success: true, data: saved });
@@ -189,7 +189,7 @@ router.patch('/products/:id', async (req, res) => {
     }
     const payload = sanitizeProductPayload(req.body, true);
     const updated = await model.updateProduct(req.params.id, payload);
-    if (!updated) return res.status(404).json({ success: false, error: 'Produto nao encontrado' });
+    if (!updated) return res.status(404).json({ success: false, error: 'Produto não encontrado' });
     return res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Erro ao atualizar produto do marketplace:', error);
@@ -203,7 +203,7 @@ router.delete('/products/:id', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode excluir produtos' });
     }
     const removed = await model.deleteProduct(req.params.id);
-    if (!removed) return res.status(404).json({ success: false, error: 'Produto nao encontrado' });
+    if (!removed) return res.status(404).json({ success: false, error: 'Produto não encontrado' });
     return res.json({ success: true, data: { id: removed.id } });
   } catch (error) {
     console.error('Erro ao excluir produto do marketplace:', error);
@@ -214,7 +214,7 @@ router.delete('/products/:id', async (req, res) => {
 router.get('/orders', async (req, res) => {
   try {
     const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuario nao autenticado' });
+    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
 
     const items = await model.getOrders();
     const ordered = items.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
@@ -232,7 +232,7 @@ router.get('/orders', async (req, res) => {
 router.post('/orders', async (req, res) => {
   try {
     const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuario nao autenticado' });
+    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
 
     const payload = req.body || {};
     const incomingItems = Array.isArray(payload.items) ? payload.items : [];
@@ -254,7 +254,7 @@ router.post('/orders', async (req, res) => {
     });
 
     if (!normalized.length) {
-      return res.status(400).json({ success: false, error: 'Itens invalidos no carrinho' });
+      return res.status(400).json({ success: false, error: 'Itens inválidos no carrinho' });
     }
 
     const orderItems = [];
@@ -265,7 +265,7 @@ router.post('/orders', async (req, res) => {
     });
 
     if (!orderItems.length) {
-      return res.status(409).json({ success: false, error: 'Os produtos selecionados nao estao disponiveis no momento' });
+      return res.status(409).json({ success: false, error: 'Os produtos selecionados não estão disponíveis no momento' });
     }
 
     const subtotal = parseMoney(orderItems.reduce((acc, item) => acc + parseMoney(item.valor_total), 0));
@@ -298,14 +298,14 @@ router.patch('/orders/:id/admin', async (req, res) => {
     const payload = req.body || {};
     const status = String(payload.status || '').trim().toLowerCase();
     if (!ALLOWED_STATUS.has(status)) {
-      return res.status(400).json({ success: false, error: 'Status invalido para pedido' });
+      return res.status(400).json({ success: false, error: 'Status inválido para pedido' });
     }
     const comentario = sanitizeText(payload.comentario_desenvolvedor, 500);
     const updated = await model.updateOrder(req.params.id, {
       status,
       comentario_desenvolvedor: comentario
     });
-    if (!updated) return res.status(404).json({ success: false, error: 'Pedido nao encontrado' });
+    if (!updated) return res.status(404).json({ success: false, error: 'Pedido não encontrado' });
     return res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Erro ao atualizar pedido do marketplace:', error);
@@ -314,3 +314,4 @@ router.patch('/orders/:id/admin', async (req, res) => {
 });
 
 module.exports = router;
+

@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const crypto = require('crypto');
 const { storage } = require('../githubStorage');
 
@@ -116,13 +116,13 @@ function createToken(payload) {
 
 function decodeToken(token) {
   const parts = String(token || '').split('.');
-  if (parts.length !== 3) throw httpError(401, 'Token invalido');
+  if (parts.length !== 3) throw httpError(401, 'Token inv?lido');
   const [h, p, s] = parts;
   const signed = `${h}.${p}`;
   const expected = crypto.createHmac('sha256', AUTH_SECRET).update(signed).digest();
   const got = b64urlDecode(s);
   if (expected.length !== got.length || !crypto.timingSafeEqual(expected, got)) {
-    throw httpError(401, 'Token invalido');
+    throw httpError(401, 'Token inv?lido');
   }
   const payload = JSON.parse(b64urlDecode(p).toString('utf8'));
   if (Number(payload.exp || 0) < Math.floor(Date.now() / 1000)) {
@@ -251,16 +251,16 @@ async function getCurrentUser(req) {
   if (!token) throw httpError(401, 'Autenticacao obrigatoria');
   const payload = decodeToken(token);
   const userId = String(payload.sub || '').trim();
-  if (!userId) throw httpError(401, 'Token invalido');
+  if (!userId) throw httpError(401, 'Token inv?lido');
   const sessionId = String(payload.sid || '').trim();
-  if (!sessionId) throw httpError(401, 'Sessao invalida. Faca login novamente');
+  if (!sessionId) throw httpError(401, 'Sessao invalida. Faça login novamente');
   const user = await readUser(userId);
-  if (!user || user.active === false) throw httpError(401, 'Usuario invalido');
+  if (!user || user.active === false) throw httpError(401, 'Usuário inválido');
   if (!user.active_session || String(user.active_session.id || '') !== sessionId) {
-    throw httpError(401, 'Sessao encerrada. Faca login novamente');
+    throw httpError(401, 'Sessao encerrada. Faça login novamente');
   }
   if (!isSessionOnline(user.active_session)) {
-    throw httpError(401, 'Sessao expirada por inatividade. Faca login novamente');
+    throw httpError(401, 'Sessao expirada por inatividade. Faça login novamente');
   }
   return user;
 }
@@ -275,7 +275,7 @@ function normalizeAndValidatePhone(raw) {
   let phone = normalizePhone(raw);
   if (phone.length === 10 || phone.length === 11) phone = `55${phone}`;
   if (!phone.startsWith('55') || (phone.length !== 12 && phone.length !== 13)) {
-    throw httpError(400, 'Telefone invalido. Use formato brasileiro com DDD');
+    throw httpError(400, 'Telefone inválido. Use formato brasileiro com DDD');
   }
   return phone;
 }
@@ -284,7 +284,7 @@ function applyUpdatePayloadToUser(targetUser, payload, options = {}) {
   const allowActive = !!options.allowActive;
   if (payload.nome !== undefined) {
     const nome = String(payload.nome || '').trim();
-    if (nome.length < 2) throw httpError(400, 'Nome invalido');
+    if (nome.length < 2) throw httpError(400, 'Nome inválido');
     targetUser.name = nome;
   }
   if (payload.endereco !== undefined) targetUser.address = String(payload.endereco || '').trim();
@@ -295,12 +295,12 @@ function applyUpdatePayloadToUser(targetUser, payload, options = {}) {
   if (payload.sexo !== undefined) targetUser.sex = normalizeSex(payload.sexo);
   if (payload.cep !== undefined) {
     const cep = normalizePhone(payload.cep);
-    if (cep.length !== 8) throw httpError(400, 'CEP invalido');
+    if (cep.length !== 8) throw httpError(400, 'CEP inválido');
     targetUser.cep = cep;
   }
   if (payload.estado !== undefined) {
     const uf = String(payload.estado || '').trim().toUpperCase();
-    if (uf.length !== 2) throw httpError(400, 'Estado invalido. Use UF com 2 letras');
+    if (uf.length !== 2) throw httpError(400, 'Estado inválido. Use UF com 2 letras');
     targetUser.state = uf;
   }
   if (allowActive && payload.active !== undefined) targetUser.active = !!payload.active;
@@ -327,7 +327,7 @@ router.get('/auth/health', async (req, res) => {
 });
 
 router.post('/auth/register', async (req, res) => withErrors(res, async () => {
-  if (!storage.isConfigured()) throw httpError(500, 'GitHub Storage nao configurado');
+  if (!storage.isConfigured()) throw httpError(500, 'GitHub Storage não configurado');
 
   const payload = req.body || {};
   const email = normalizeEmail(payload.email);
@@ -339,12 +339,12 @@ router.post('/auth/register', async (req, res) => withErrors(res, async () => {
   const cep = normalizePhone(payload.cep || '');
   const uf = String(payload.estado || '').trim().toUpperCase();
 
-  if (name.length < 2) throw httpError(400, 'Nome invalido');
-  if (!isValidEmail(email)) throw httpError(400, 'E-mail invalido');
+  if (name.length < 2) throw httpError(400, 'Nome inválido');
+  if (!isValidEmail(email)) throw httpError(400, 'E-mail inválido');
   if (password.length < 6) throw httpError(400, 'Senha deve ter no minimo 6 caracteres');
-  if (address.length < 3) throw httpError(400, 'Endereco invalido');
-  if (cep.length !== 8) throw httpError(400, 'CEP invalido');
-  if (uf.length !== 2) throw httpError(400, 'Estado invalido. Use UF com 2 letras');
+  if (address.length < 3) throw httpError(400, 'Endereço inválido');
+  if (cep.length !== 8) throw httpError(400, 'CEP inválido');
+  if (uf.length !== 2) throw httpError(400, 'Estado inválido. Use UF com 2 letras');
 
   const { emailIdx, phoneIdx } = await loadIndexes();
   if (emailIdx[email]) throw httpError(409, 'E-mail ja cadastrado');
@@ -388,7 +388,7 @@ router.post('/auth/register', async (req, res) => withErrors(res, async () => {
 }));
 
 router.post('/auth/login', async (req, res) => withErrors(res, async () => {
-  if (!storage.isConfigured()) throw httpError(500, 'GitHub Storage nao configurado');
+  if (!storage.isConfigured()) throw httpError(500, 'GitHub Storage não configurado');
   const payload = req.body || {};
   const identifier = String(payload.identifier || '').trim().toLowerCase();
   const password = String(payload.password || '');
@@ -415,11 +415,11 @@ router.post('/auth/login', async (req, res) => withErrors(res, async () => {
       if (userId) break;
     }
   }
-  if (!userId) throw httpError(401, 'Usuario ou senha invalidos');
+  if (!userId) throw httpError(401, 'Usuário ou senha inválidos');
 
   const user = await readUser(userId);
-  if (!user || user.active === false) throw httpError(401, 'Usuario ou senha invalidos');
-  if (!verifyPassword(password, user.password || {})) throw httpError(401, 'Usuario ou senha invalidos');
+  if (!user || user.active === false) throw httpError(401, 'Usuário ou senha inválidos');
+  if (!verifyPassword(password, user.password || {})) throw httpError(401, 'Usuário ou senha inválidos');
 
   if (isSessionOnline(user.active_session)) {
     throw httpError(409, 'Usuario ja esta online em outro dispositivo');
@@ -486,9 +486,9 @@ router.post('/auth/logout', async (req, res) => withErrors(res, async () => {
 router.patch('/auth/me', async (req, res) => withErrors(res, async () => {
   const currentUser = await getCurrentUser(req);
   const userId = String(currentUser.id || '').trim();
-  if (!userId) throw httpError(401, 'Usuario invalido');
+  if (!userId) throw httpError(401, 'Usuário inválido');
   const targetUser = await readUser(userId);
-  if (!targetUser) throw httpError(404, 'Usuario nao encontrado');
+  if (!targetUser) throw httpError(404, 'Usuário não encontrado');
 
   const payload = req.body || {};
   const { emailIdx, phoneIdx } = await loadIndexes();
@@ -497,7 +497,7 @@ router.patch('/auth/me', async (req, res) => withErrors(res, async () => {
 
   if (payload.email !== undefined) {
     const newEmail = normalizeEmail(payload.email);
-    if (!isValidEmail(newEmail)) throw httpError(400, 'E-mail invalido');
+    if (!isValidEmail(newEmail)) throw httpError(400, 'E-mail inválido');
     if (emailIdx[newEmail] && emailIdx[newEmail] !== userId) throw httpError(409, 'E-mail ja cadastrado');
     if (oldEmail && oldEmail !== newEmail) delete emailIdx[oldEmail];
     emailIdx[newEmail] = userId;
@@ -575,7 +575,7 @@ router.post('/auth/users/:userId/role', async (req, res) => withErrors(res, asyn
   const userId = String(req.params.userId || '').trim();
   const role = normalizeRole(req.query.role || (req.body && req.body.role));
   const target = await readUser(userId);
-  if (!target) throw httpError(404, 'Usuario nao encontrado');
+  if (!target) throw httpError(404, 'Usuário não encontrado');
   target.role = role;
   target.updated_at = nowIso();
   await writeUser(target, `Atualizar role do usuario ${userId}`);
@@ -593,7 +593,7 @@ router.patch('/auth/users/:userId', async (req, res) => withErrors(res, async ()
   ensureDeveloper(current);
   const userId = String(req.params.userId || '').trim();
   const target = await readUser(userId);
-  if (!target) throw httpError(404, 'Usuario nao encontrado');
+  if (!target) throw httpError(404, 'Usuário não encontrado');
   const payload = req.body || {};
   const { emailIdx, phoneIdx } = await loadIndexes();
 
@@ -602,7 +602,7 @@ router.patch('/auth/users/:userId', async (req, res) => withErrors(res, async ()
 
   if (payload.email !== undefined) {
     const newEmail = normalizeEmail(payload.email);
-    if (!isValidEmail(newEmail)) throw httpError(400, 'E-mail invalido');
+    if (!isValidEmail(newEmail)) throw httpError(400, 'E-mail inválido');
     if (emailIdx[newEmail] && emailIdx[newEmail] !== userId) throw httpError(409, 'E-mail ja cadastrado');
     if (oldEmail && oldEmail !== newEmail) delete emailIdx[oldEmail];
     emailIdx[newEmail] = userId;
@@ -632,3 +632,5 @@ router.patch('/auth/users/:userId', async (req, res) => withErrors(res, async ()
 }));
 
 module.exports = router;
+
+

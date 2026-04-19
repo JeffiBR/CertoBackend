@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rotas de Clientes - ajuste e limpeza
  */
 
@@ -158,7 +158,7 @@ router.post('/:id/migrar-servidor', async (req, res) => {
     if (!servidor) return res.status(400).json({ success: false, error: 'Servidor eh obrigatorio' });
 
     const cliente = await clientesModel.getById(id);
-    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente nao encontrado' });
+    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
 
     const obs = appendObservacao(
       cliente.observacoes,
@@ -187,7 +187,7 @@ router.post('/:id/mudar-plano', async (req, res) => {
     if (!tipo_plano) return res.status(400).json({ success: false, error: 'Plano eh obrigatorio' });
 
     const cliente = await clientesModel.getById(id);
-    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente nao encontrado' });
+    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
 
     const obs = appendObservacao(
       cliente.observacoes,
@@ -232,3 +232,4 @@ router.post('/clear-cache', async (req, res) => {
 });
 
 module.exports = router;
+

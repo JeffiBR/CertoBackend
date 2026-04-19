@@ -1,5 +1,5 @@
 ﻿/**
- * Rotas de RenovaÃ§Ãµes - paths ajustados
+ * Rotas de Renovações - paths ajustados
  */
 
 const express = require('express');
@@ -14,8 +14,8 @@ function formatarData(data) {
 
 function obterNomePlano(plano) {
   const planos = {
-    '1_mes_sem_adultos': '1 MÃªs (Sem Adultos)',
-    '1_mes_com_adultos': '1 MÃªs (Com Adultos)',
+    '1_mes_sem_adultos': '1 Mês (Sem Adultos)',
+    '1_mes_com_adultos': '1 Mês (Com Adultos)',
     '2_mes_sem_adultos': '2 Meses (Sem Adultos)',
     '2_mes_com_adultos': '2 Meses (Com Adultos)',
     '3_mes_sem_adultos': '3 Meses (Sem Adultos)',
@@ -63,7 +63,7 @@ router.get('/', async (req, res) => {
     renovacoes.sort((a, b) => new Date(b.data_renovacao) - new Date(a.data_renovacao));
     res.json({ success: true, count: renovacoes.length, data: renovacoes });
   } catch (error) {
-    console.error('âŒ Erro ao buscar renovaÃ§Ãµes:', error);
+    console.error('Erro ao buscar renovações:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -86,7 +86,7 @@ router.get('/historico/meses', async (req, res) => {
 
     res.json({ success: true, count: meses.length, data: meses });
   } catch (error) {
-    console.error('âŒ Erro ao buscar meses de histÃ³rico:', error);
+    console.error('Erro ao buscar meses de histórico:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -95,7 +95,7 @@ router.get('/historico/:anoMes', async (req, res) => {
   try {
     const { anoMes } = req.params;
     if (!validarAnoMes(anoMes)) {
-      return res.status(400).json({ success: false, error: 'ParÃ¢metro anoMes invÃ¡lido (use YYYY-MM)' });
+      return res.status(400).json({ success: false, error: 'Parâmetro anoMes inválido (use YYYY-MM)' });
     }
 
     const [renovacoes, clientes] = await Promise.all([
@@ -162,7 +162,7 @@ router.get('/historico/:anoMes', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('âŒ Erro ao montar histÃ³rico:', error);
+    console.error('Erro ao montar histórico:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -171,7 +171,7 @@ router.delete('/historico/:anoMes', async (req, res) => {
   try {
     const { anoMes } = req.params;
     if (!validarAnoMes(anoMes)) {
-      return res.status(400).json({ success: false, error: 'ParÃ¢metro anoMes invÃ¡lido (use YYYY-MM)' });
+      return res.status(400).json({ success: false, error: 'Parâmetro anoMes inválido (use YYYY-MM)' });
     }
 
     const renovacoes = await renovacoesModel.getAll();
@@ -186,11 +186,11 @@ router.delete('/historico/:anoMes', async (req, res) => {
 
     res.json({
       success: true,
-      message: `RenovaÃ§Ãµes removidas do mÃªs ${anoMes}`,
+      message: `Renovações removidas do mês ${anoMes}`,
       removidas
     });
   } catch (error) {
-    console.error('âŒ Erro ao remover histÃ³rico:', error);
+    console.error('Erro ao remover histórico:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -200,10 +200,10 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const renovacoes = await renovacoesModel.getAll();
     const renovacao = renovacoes.find(r => r.id === parseInt(id));
-    if (!renovacao) return res.status(404).json({ success: false, error: 'RenovaÃ§Ã£o nÃ£o encontrada' });
+    if (!renovacao) return res.status(404).json({ success: false, error: 'Renovação não encontrada' });
     res.json({ success: true, data: renovacao });
   } catch (error) {
-    console.error('âŒ Erro ao buscar renovaÃ§Ã£o:', error);
+    console.error('Erro ao buscar renovação:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -214,7 +214,7 @@ router.get('/cliente/:clienteId', async (req, res) => {
     const renovacoes = await renovacoesModel.getByClienteId(clienteId);
     res.json({ success: true, count: renovacoes.length, data: renovacoes });
   } catch (error) {
-    console.error('âŒ Erro ao buscar renovaÃ§Ãµes do cliente:', error);
+    console.error('Erro ao buscar renovações do cliente:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -222,9 +222,9 @@ router.get('/cliente/:clienteId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const renovacaoData = req.body;
-    if (!renovacaoData.cliente_id) return res.status(400).json({ success: false, error: 'ID do cliente Ã© obrigatÃ³rio' });
+    if (!renovacaoData.cliente_id) return res.status(400).json({ success: false, error: 'ID do cliente é obrigatório' });
     const cliente = await clientesModel.getById(renovacaoData.cliente_id);
-    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente nÃ£o encontrado' });
+    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
     const novaRenovacao = {
       cliente_id: renovacaoData.cliente_id || cliente.id,
       cliente_nome: renovacaoData.cliente_nome || cliente.nome,
@@ -240,10 +240,10 @@ router.post('/', async (req, res) => {
       observacoes: renovacaoData.observacoes || null
     };
     const renovacaoRegistrada = await renovacoesModel.create(novaRenovacao);
-    console.log('âœ… RenovaÃ§Ã£o registrada:', renovacaoRegistrada.cliente_nome);
-    res.status(201).json({ success: true, message: 'RenovaÃ§Ã£o registrada com sucesso', data: renovacaoRegistrada });
+    console.log('Renovação registrada:', renovacaoRegistrada.cliente_nome);
+    res.status(201).json({ success: true, message: 'Renovação registrada com sucesso', data: renovacaoRegistrada });
   } catch (error) {
-    console.error('âŒ Erro ao registrar renovaÃ§Ã£o:', error);
+    console.error('Erro ao registrar renovação:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -251,9 +251,9 @@ router.post('/', async (req, res) => {
 router.post('/executar', async (req, res) => {
   try {
     const { cliente_id, plano_novo, valor_renovacao } = req.body;
-    if (!cliente_id || !plano_novo) return res.status(400).json({ success: false, error: 'ID do cliente e novo plano sÃ£o obrigatÃ³rios' });
+    if (!cliente_id || !plano_novo) return res.status(400).json({ success: false, error: 'ID do cliente e novo plano são obrigatórios' });
     const cliente = await clientesModel.getById(cliente_id);
-    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente nÃ£o encontrado' });
+    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
     const novoVencimento = calcularNovoVencimento(cliente.data_vencimento, plano_novo);
     const dadosRenovacao = {
       cliente_id: cliente.id,
@@ -271,12 +271,12 @@ router.post('/executar', async (req, res) => {
     const dadosAtualizacao = { tipo_plano: plano_novo, valor_plano: valor_renovacao, data_vencimento: novoVencimento };
     const clienteAtualizado = await clientesModel.update(cliente_id, dadosAtualizacao);
     const renovacaoRegistrada = await renovacoesModel.create(dadosRenovacao);
-    console.log('âœ… RenovaÃ§Ã£o executada:', cliente.nome);
+    console.log('Renovação executada:', cliente.nome);
     console.log(`   Plano: ${obterNomePlano(plano_novo)}`);
     console.log(`   Novo vencimento: ${formatarData(novoVencimento)}`);
-    res.json({ success: true, message: 'RenovaÃ§Ã£o realizada com sucesso', data: { cliente: clienteAtualizado, renovacao: renovacaoRegistrada, plano_nome: obterNomePlano(plano_novo), novo_vencimento: novoVencimento, novo_vencimento_formatado: formatarData(novoVencimento) } });
+    res.json({ success: true, message: 'Renovação realizada com sucesso', data: { cliente: clienteAtualizado, renovacao: renovacaoRegistrada, plano_nome: obterNomePlano(plano_novo), novo_vencimento: novoVencimento, novo_vencimento_formatado: formatarData(novoVencimento) } });
   } catch (error) {
-    console.error('âŒ Erro ao executar renovaÃ§Ã£o:', error);
+    console.error('Erro ao executar renovação:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -293,10 +293,11 @@ router.get('/estatisticas/resumo', async (req, res) => {
     renovacoes.forEach(r => { const plano = obterNomePlano(r.plano_novo); contagemPorPlano[plano] = (contagemPorPlano[plano] || 0) + 1; });
     res.json({ success: true, data: { total_renovacoes: renovacoes.length, renovacoes_mes_atual: renovacoesMes.length, valor_total_mes: totalValorMes, valor_total: totalValor, contagem_por_plano: contagemPorPlano } });
   } catch (error) {
-    console.error('âŒ Erro ao buscar estatÃ­sticas:', error);
+    console.error('Erro ao buscar estatísticas:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 module.exports = router;
+
 

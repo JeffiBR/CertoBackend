@@ -88,7 +88,7 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const item = await precificacaoModel.getById(id);
-    if (!item) return res.status(404).json({ success: false, error: 'Precificacao nao encontrada' });
+    if (!item) return res.status(404).json({ success: false, error: 'Precificação não encontrada' });
     res.json({ success: true, data: item });
   } catch (error) {
     console.error('❌ Erro ao buscar precificação:', error);
@@ -174,7 +174,7 @@ router.patch('/:id', async (req, res) => {
       Object.assign(updates, imageMeta);
     }
     const atualizado = await precificacaoModel.update(id, updates);
-    if (!atualizado) return res.status(404).json({ success: false, error: 'Precificacao nao encontrada' });
+    if (!atualizado) return res.status(404).json({ success: false, error: 'Precificação não encontrada' });
     res.json({ success: true, data: atualizado });
   } catch (error) {
     console.error('❌ Erro ao atualizar precificacao:', error);
@@ -186,7 +186,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const ok = await precificacaoModel.delete(id);
-    if (!ok) return res.status(404).json({ success: false, error: 'Precificacao nao encontrada' });
+    if (!ok) return res.status(404).json({ success: false, error: 'Precificação não encontrada' });
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Erro ao remover precificacao:', error);

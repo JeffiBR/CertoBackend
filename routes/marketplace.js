@@ -41,6 +41,10 @@ function sanitizeText(value, maxLen) {
   return text.slice(0, maxLen);
 }
 
+function sanitizeCategory(value) {
+  return sanitizeText(value, 80);
+}
+
 function sanitizeImageUrl(value) {
   const url = sanitizeText(value, 600000); // aceita data url pequena/media
   if (!url) return '';
@@ -72,6 +76,10 @@ function sanitizeProductPayload(body, allowPartial) {
   if (!allowPartial || payload.ativo !== undefined) {
     out.ativo = payload.ativo !== false;
   }
+  if (!allowPartial || payload.categoria !== undefined) {
+    out.categoria = sanitizeCategory(payload.categoria);
+    if (!out.categoria) throw new Error('Informe a categoria do produto');
+  }
 
   return out;
 }
@@ -83,6 +91,7 @@ function formatOrderItem(product, qty) {
     product_id: product.id,
     nome: String(product.nome || ''),
     descricao: String(product.descricao || ''),
+    categoria: String(product.categoria || ''),
     imagem_url: String(product.imagem_url || ''),
     quantidade,
     valor_unitario: unitPrice,
@@ -104,6 +113,57 @@ router.get('/products', async (req, res) => {
     return res.json({ success: true, count: activeOnly.length, data: activeOnly });
   } catch (error) {
     console.error('Erro ao listar produtos do marketplace:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/categories', async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ success: false, error: 'Usuario nao autenticado' });
+    const categories = await model.getCategories();
+    return res.json({ success: true, count: categories.length, data: categories });
+  } catch (error) {
+    console.error('Erro ao listar categorias do marketplace:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/categories', async (req, res) => {
+  try {
+    if (!isDeveloper(req)) {
+      return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode criar categorias' });
+    }
+    const categoria = sanitizeCategory(req.body && req.body.categoria);
+    if (!categoria) return res.status(400).json({ success: false, error: 'Informe a categoria' });
+    const current = await model.getCategories();
+    if (current.some((x) => x.toLowerCase() === categoria.toLowerCase())) {
+      return res.status(409).json({ success: false, error: 'Categoria ja cadastrada' });
+    }
+    const saved = await model.saveCategories([...current, categoria], `Criar categoria marketplace: ${categoria}`);
+    return res.status(201).json({ success: true, data: saved });
+  } catch (error) {
+    console.error('Erro ao criar categoria do marketplace:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/categories/:categoria', async (req, res) => {
+  try {
+    if (!isDeveloper(req)) {
+      return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode excluir categorias' });
+    }
+    const categoria = sanitizeCategory(req.params.categoria);
+    if (!categoria) return res.status(400).json({ success: false, error: 'Categoria invalida' });
+    const current = await model.getCategories();
+    const next = current.filter((x) => x.toLowerCase() !== categoria.toLowerCase());
+    if (next.length === current.length) {
+      return res.status(404).json({ success: false, error: 'Categoria nao encontrada' });
+    }
+    const saved = await model.saveCategories(next, `Excluir categoria marketplace: ${categoria}`);
+    return res.json({ success: true, data: saved });
+  } catch (error) {
+    console.error('Erro ao excluir categoria do marketplace:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -47,9 +47,9 @@ app.use(cors({
     // Em dev, sem CORS_ALLOWED_ORIGINS, libera tudo
     if (allowedOrigins.length === 0 && NODE_ENV !== 'production') return callback(null, true);
     if (allowedOrigins.includes('*')) return callback(null, true);
-    // Em produÃ§Ã£o, aceita apenas origens explicitamente permitidas
+    // Em produção, aceita apenas origens explicitamente permitidas
     if (allowedOrigins.includes(normalized)) return callback(null, true);
-    // Nao dispara erro 500 por CORS; apenas nega headers CORS para a origem.
+    // Não dispara erro 500 por CORS; apenas nega headers CORS para a origem.
     return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -85,7 +85,7 @@ app.use((req, res, next) => {
   if (!userId || userId === 'public') {
     return res.status(401).json({
       success: false,
-      error: 'Usuario nao autenticado. Faca login no Clerk para acessar seus dados.'
+      error: 'Usuário não autenticado. Faça login no Clerk para acessar seus dados.'
     });
   }
 
@@ -93,7 +93,7 @@ app.use((req, res, next) => {
 });
 
 
-// Log de requisiÃ§Ãµes
+// Log de requisições
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   const userCtx = storage.getCurrentUserContext();
@@ -102,7 +102,7 @@ app.use((req, res, next) => {
 });
 
 // =============================================
-// IMPORTAÃ‡ÃƒO DE ROTAS
+// IMPORTAÇÃO DE ROTAS
 // =============================================
 
 const clientesRoutes = require('./routes/clientes');
@@ -282,7 +282,7 @@ app.get('/api', (req, res) => {
 // Middleware de erro 404
 app.use((req, res, next) => {
   res.status(404).json({
-    error: 'Endpoint nÃ£o encontrado',
+    error: 'Endpoint não encontrado',
     path: req.url,
     method: req.method
   });
@@ -290,7 +290,7 @@ app.use((req, res, next) => {
 
 // Middleware de erro global
 app.use((err, req, res, next) => {
-  console.error('âŒ Erro:', err);
+  console.error('Erro:', err);
   
   res.status(err.status || 500).json({
     error: err.message || 'Erro interno do servidor',
@@ -299,12 +299,12 @@ app.use((err, req, res, next) => {
 });
 
 // =============================================
-// INICIALIZAÃ‡ÃƒO DO SERVIDOR
+// INICIALIZAÇÃO DO SERVIDOR
 // =============================================
 
 async function ensureRepoFiles() {
   if (!storage.isConfigured()) {
-    console.log('GitHub Storage nÃ£o configurado â€” pulando verificaÃ§Ã£o de arquivos no repositÃ³rio.');
+    console.log('GitHub Storage não configurado - pulando verificação de arquivos no repositório.');
     return;
   }
 
@@ -354,12 +354,12 @@ async function ensureRepoFiles() {
     try {
       const sha = await storage.getFileSha(f.path);
       if (!sha) {
-        console.log(`Arquivo ${f.path} nÃ£o encontrado no repositÃ³rio â€” criando com conteÃºdo inicial.`);
+        console.log(`Arquivo ${f.path} não encontrado no repositório - criando com conteúdo inicial.`);
         const res = await storage.writeFile(f.path, f.content, `Criar ${f.path} (inicial)`);
         if (res && res.success) {
-          console.log(`âœ… Arquivo criado: ${f.path}`);
+          console.log(`Arquivo criado: ${f.path}`);
         } else {
-          console.warn(`âŒ Falha ao criar ${f.path}:`, res && res.error ? res.error : 'erro desconhecido');
+          console.warn(`Falha ao criar ${f.path}:`, res && res.error ? res.error : 'erro desconhecido');
         }
       } else {
         console.log(`Arquivo existe: ${f.path}`);
@@ -376,23 +376,23 @@ async function ensureRepoFiles() {
   app.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('='.repeat(60));
-  console.log('ðŸŽ¬ Preço Certo Backend');
+  console.log('Preço Certo Backend');
   console.log('='.repeat(60));
-  console.log(`ðŸš€ Servidor iniciado!`);
-  console.log(`ðŸ“¡ Porta: ${PORT}`);
-  console.log(`ðŸŒ Ambiente: ${NODE_ENV}`);
-  console.log(`ðŸ” CORS: ${allowedOrigins.length ? allowedOrigins.join(', ') : (NODE_ENV === 'production' ? 'nenhuma origem liberada (defina CORS_ALLOWED_ORIGINS)' : 'modo aberto para desenvolvimento')}`);
-  console.log(`â° Iniciado em: ${new Date().toISOString()}`);
+  console.log('Servidor iniciado!');
+  console.log(`Porta: ${PORT}`);
+  console.log(`Ambiente: ${NODE_ENV}`);
+  console.log(`CORS: ${allowedOrigins.length ? allowedOrigins.join(', ') : (NODE_ENV === 'production' ? 'nenhuma origem liberada (defina CORS_ALLOWED_ORIGINS)' : 'modo aberto para desenvolvimento')}`);
+  console.log(`⏰ Iniciado em: ${new Date().toISOString()}`);
   console.log('='.repeat(60));
   console.log('');
-  console.log('ðŸ“ GitHub Storage:');
+  console.log('GitHub Storage:');
 
-  console.log(`   Owner: ${process.env.GITHUB_OWNER || 'nÃ£o configurado'}`);
-  console.log(`   Repo: ${process.env.GITHUB_REPO || 'nÃ£o configurado'}`);
+  console.log(`   Owner: ${process.env.GITHUB_OWNER || 'não configurado'}`);
+  console.log(`   Repo: ${process.env.GITHUB_REPO || 'não configurado'}`);
   console.log(`   Branch: ${process.env.GITHUB_BRANCH || 'main'}`);
-  console.log(`   Status: ${process.env.GITHUB_TOKEN ? 'âœ… Configurado' : 'âŒ Token nÃ£o configurado'}`);
+  console.log(`   Status: ${process.env.GITHUB_TOKEN ? 'Configurado' : 'Token não configurado'}`);
   console.log('');
-  console.log('ðŸ“¡ Endpoints disponÃ­veis:');
+  console.log('Endpoints disponíveis:');
   console.log('   Clientes:');
   console.log('     GET    /api/clientes');
   console.log('     GET    /api/clientes/:id');
@@ -400,7 +400,7 @@ async function ensureRepoFiles() {
   console.log('     PATCH  /api/clientes/:id');
   console.log('     DELETE /api/clientes/:id');
   console.log('');
-  console.log('   RenovaÃ§Ãµes:');
+  console.log('   Renovações:');
   console.log('     GET    /api/renovacoes');
   console.log('     POST   /api/renovacoes');
   console.log('     POST   /api/renovacoes/executar');
@@ -434,5 +434,7 @@ process.on('SIGINT', () => {
   console.log('SIGINT recebido. Encerrando servidor...');
   process.exit(0);
 });
+
+
 
 

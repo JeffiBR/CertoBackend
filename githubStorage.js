@@ -315,7 +315,7 @@ class GitHubStorage {
     try {
       await this.createBackupSnapshot(path, options);
       const sha = await this._getFileShaByResolvedPath(resolvedPath);
-      if (!sha) return { success: false, error: 'Arquivo nao encontrado' };
+      if (!sha) return { success: false, error: 'Arquivo não encontrado' };
 
       const url = `${this.baseUrl}/repos/${this.owner}/${this.repo}/contents/${resolvedPath}`;
       const response = await fetch(url, {
@@ -453,4 +453,5 @@ module.exports = {
   clientesModel,
   renovacoesModel
 };
+
 

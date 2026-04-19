@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Modelo de Marketplace
  * - Produtos cadastrados pelo desenvolvedor
  * - Pedidos criados pelos usuarios no checkout PIX
@@ -19,7 +19,7 @@ class MarketplaceModel {
   }
 
   async writeArray(filePath, payload, message) {
-    if (!this.storage.isConfigured()) throw new Error('GitHub Storage nao configurado');
+    if (!this.storage.isConfigured()) throw new Error('GitHub Storage não configurado');
     const result = await this.storage.writeFile(
       filePath,
       Array.isArray(payload) ? payload : [],
@@ -151,3 +151,4 @@ class MarketplaceModel {
 }
 
 module.exports = { MarketplaceModel };
+

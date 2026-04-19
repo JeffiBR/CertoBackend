@@ -1,5 +1,5 @@
 ﻿/**
- * Modelo de Mensagens de CobranÃ§a
+ * Modelo de Mensagens de Cobrança
  */
 
 class MensagensModel {
@@ -12,40 +12,40 @@ class MensagensModel {
     return [
       {
         id: 'd-3',
-        nome: 'CobranÃ§a 3 dias antes',
+        nome: 'Cobrança 3 dias antes',
         regra: 'D-3',
-        texto: 'OlÃ¡ {nome}, sua assinatura vence em {vencimento} (faltam {dias} dias). Valor: {valor}. Servidor: {servidor}. Qualquer dÃºvida, fale com {revendedor}.'
+        texto: 'Olá {nome}, sua assinatura vence em {vencimento} (faltam {dias} dias). Valor: {valor}. Servidor: {servidor}. Qualquer dúvida, fale com {revendedor}.'
       },
       {
         id: 'd-2',
-        nome: 'CobranÃ§a 2 dias antes',
+        nome: 'Cobrança 2 dias antes',
         regra: 'D-2',
-        texto: 'OlÃ¡ {nome}, faltam {dias} dias para o vencimento ({vencimento}). Valor: {valor}. Servidor: {servidor}.'
+        texto: 'Olá {nome}, faltam {dias} dias para o vencimento ({vencimento}). Valor: {valor}. Servidor: {servidor}.'
       },
       {
         id: 'd-1',
-        nome: 'CobranÃ§a 1 dia antes',
+        nome: 'Cobrança 1 dia antes',
         regra: 'D-1',
-        texto: 'OlÃ¡ {nome}, sua assinatura vence amanhÃ£ ({vencimento}). Valor: {valor}. Servidor: {servidor}.'
+        texto: 'Olá {nome}, sua assinatura vence amanhã ({vencimento}). Valor: {valor}. Servidor: {servidor}.'
       },
       {
         id: 'd0',
-        nome: 'CobranÃ§a no dia',
+        nome: 'Cobrança no dia',
         regra: 'D0',
-        texto: 'OlÃ¡ {nome}, hoje ({vencimento}) Ã© o vencimento da sua assinatura. Valor: {valor}. Servidor: {servidor}. Caso jÃ¡ tenha pago, desconsidere.'
+        texto: 'Olá {nome}, hoje ({vencimento}) é o vencimento da sua assinatura. Valor: {valor}. Servidor: {servidor}. Caso já tenha pago, desconsidere.'
       },
       {
         id: 'd+1',
-        nome: 'CobranÃ§a apÃ³s vencimento',
+        nome: 'Cobrança após vencimento',
         regra: 'D+1',
-        texto: 'OlÃ¡ {nome}, sua assinatura venceu em {vencimento} (hÃ¡ {dias} dia). Valor: {valor}. Servidor: {servidor}. Podemos renovar?'
+        texto: 'Olá {nome}, sua assinatura venceu em {vencimento} (há {dias} dia). Valor: {valor}. Servidor: {servidor}. Podemos renovar?'
       }
     ];
   }
 
   async getAll() {
     if (!this.storage.isConfigured()) {
-      console.warn('GitHub Storage nao configurado, retornando mensagens padrao');
+      console.warn('GitHub Storage não configurado, retornando mensagens padrão');
       return this.getDefaultData();
     }
 
@@ -68,7 +68,7 @@ class MensagensModel {
 
   async saveAll(mensagens) {
     if (!this.storage.isConfigured()) {
-      return { success: false, error: 'GitHub Storage nÃ£o configurado' };
+      return { success: false, error: 'GitHub Storage não configurado' };
     }
     const result = await this.storage.writeFile(this.filePath, mensagens, 'Atualizar mensagens de cobrança');
     if (!result.success) return { success: false, error: result.error || 'Falha ao salvar mensagens' };
@@ -96,4 +96,6 @@ class MensagensModel {
 }
 
 module.exports = { MensagensModel };
+
+
 

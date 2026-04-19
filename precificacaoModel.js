@@ -53,7 +53,7 @@ class PrecificacaoModel {
       const result = await this.storage.writeFile(
         this.filePath,
         itens,
-        `Adicionar precificaÃ§Ã£o: ${novoItem.nome_produto || 'ID ' + novoItem.id}`
+        `Adicionar precificação: ${novoItem.nome_produto || 'ID ' + novoItem.id}`
       );
     if (!result.success) throw new Error(result.error || 'Falha ao salvar dados no GitHub');
     }
@@ -111,5 +111,6 @@ class PrecificacaoModel {
 }
 
 module.exports = { PrecificacaoModel };
+
 
 

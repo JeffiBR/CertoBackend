@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Modelo de Recargas de Celular (compartilhado entre usuarios)
  */
 
@@ -15,7 +15,7 @@ class RecargasCelularModel {
   }
 
   async saveAll(items, message) {
-    if (!this.storage.isConfigured()) throw new Error('GitHub Storage nao configurado');
+    if (!this.storage.isConfigured()) throw new Error('GitHub Storage não configurado');
     const result = await this.storage.writeFile(
       this.filePath,
       Array.isArray(items) ? items : [],
@@ -89,3 +89,4 @@ class RecargasCelularModel {
 }
 
 module.exports = { RecargasCelularModel };
+

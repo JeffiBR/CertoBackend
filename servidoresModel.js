@@ -10,7 +10,7 @@ class ServidoresModel {
 
   async getAll() {
     if (!this.storage.isConfigured()) {
-      console.warn('âš ï¸ GitHub Storage nÃ£o configurado, retornando servidores padrÃ£o');
+      console.warn('GitHub Storage não configurado, retornando servidores padrão');
       return this.getDefaultData();
     }
 
@@ -26,7 +26,7 @@ class ServidoresModel {
   async create(servidor) {
     const servidores = await this.getAll();
     
-    // Gerar ID Ãºnico
+    // Gerar ID único
     const maxId = servidores.length > 0 
       ? Math.max(...servidores.map(s => parseInt(s.id) || 0)) 
       : 0;
@@ -131,5 +131,6 @@ class ServidoresModel {
 }
 
 module.exports = { ServidoresModel };
+
 
 

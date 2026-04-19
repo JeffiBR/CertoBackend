@@ -10,7 +10,7 @@ class RevendedoresModel {
 
   async getAll() {
     if (!this.storage.isConfigured()) {
-      console.warn('âš ï¸ GitHub Storage nÃ£o configurado, retornando revendedores padrÃ£o');
+      console.warn('GitHub Storage não configurado, retornando revendedores padrão');
       return this.getDefaultData();
     }
 
@@ -125,5 +125,6 @@ class RevendedoresModel {
 }
 
 module.exports = { RevendedoresModel };
+
 
 

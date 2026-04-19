@@ -56,7 +56,7 @@ class GitHubJsonStorage:
 
     def write_json(self, path: str, content: Any, message: str, sha: Optional[str] = None) -> None:
         if not self.is_configured():
-            raise RuntimeError("GitHub Storage nao configurado")
+            raise RuntimeError("GitHub Storage não configurado")
 
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}/contents/{path}"
         payload_text = json.dumps(content, ensure_ascii=False, indent=2)
@@ -182,12 +182,12 @@ def decode_token(token: str) -> Dict[str, Any]:
     try:
         h, p, s = token.split(".")
     except ValueError as exc:
-        raise HTTPException(status_code=401, detail="Token invalido") from exc
+        raise HTTPException(status_code=401, detail="Token inválido") from exc
 
     expected = hmac.new(AUTH_SECRET.encode("utf-8"), f"{h}.{p}".encode("utf-8"), hashlib.sha256).digest()
     got = b64url_decode(s)
     if not hmac.compare_digest(expected, got):
-        raise HTTPException(status_code=401, detail="Token invalido")
+        raise HTTPException(status_code=401, detail="Token inválido")
 
     payload = json.loads(b64url_decode(p).decode("utf-8"))
     if int(payload.get("exp", 0)) < int(time.time()):
@@ -353,11 +353,11 @@ def get_current_user(authorization: Optional[str] = Header(default=None)) -> Dic
     payload = decode_token(token)
     user_id = str(payload.get("sub") or "").strip()
     if not user_id:
-        raise HTTPException(status_code=401, detail="Token invalido")
+        raise HTTPException(status_code=401, detail="Token inválido")
 
     user = read_user(user_id)
     if not user or not user.get("active", True):
-        raise HTTPException(status_code=401, detail="Usuario invalido")
+        raise HTTPException(status_code=401, detail="Usuário inválido")
 
     return user
 
@@ -403,7 +403,7 @@ def health() -> Dict[str, Any]:
 @app.post("/auth/register")
 def register(payload: RegisterInput) -> Dict[str, Any]:
     if not storage.is_configured():
-        raise HTTPException(status_code=500, detail="GitHub Storage nao configurado")
+        raise HTTPException(status_code=500, detail="GitHub Storage não configurado")
 
     role = "usuario"
 
@@ -412,16 +412,16 @@ def register(payload: RegisterInput) -> Dict[str, Any]:
     if len(phone) in (10, 11):
         phone = "55" + phone
     if not phone.startswith("55") or len(phone) not in (12, 13):
-        raise HTTPException(status_code=400, detail="Telefone invalido. Use formato brasileiro com DDD")
+        raise HTTPException(status_code=400, detail="Telefone inválido. Use formato brasileiro com DDD")
 
     sex = normalize_sex(payload.sexo)
     cep = normalize_phone(payload.cep or "")
     if len(cep) != 8:
-        raise HTTPException(status_code=400, detail="CEP invalido")
+        raise HTTPException(status_code=400, detail="CEP inválido")
 
     estado = (payload.estado or "").strip().upper()
     if len(estado) != 2:
-        raise HTTPException(status_code=400, detail="Estado invalido. Use UF com 2 letras")
+        raise HTTPException(status_code=400, detail="Estado inválido. Use UF com 2 letras")
 
     email_idx, phone_idx, email_sha, phone_sha = load_indexes()
 
@@ -473,7 +473,7 @@ def register(payload: RegisterInput) -> Dict[str, Any]:
 @app.post("/auth/login")
 def login(payload: LoginInput) -> Dict[str, Any]:
     if not storage.is_configured():
-        raise HTTPException(status_code=500, detail="GitHub Storage nao configurado")
+        raise HTTPException(status_code=500, detail="GitHub Storage não configurado")
 
     identifier = payload.identifier.strip().lower()
     if not identifier:
@@ -487,14 +487,14 @@ def login(payload: LoginInput) -> Dict[str, Any]:
         user_id = phone_idx.get(normalized_phone)
 
     if not user_id:
-        raise HTTPException(status_code=401, detail="Usuario ou senha invalidos")
+        raise HTTPException(status_code=401, detail="Usuário ou senha inválidos")
 
     user = read_user(user_id)
     if not user or not user.get("active", True):
-        raise HTTPException(status_code=401, detail="Usuario ou senha invalidos")
+        raise HTTPException(status_code=401, detail="Usuário ou senha inválidos")
 
     if not verify_password(payload.password, user.get("password", {})):
-        raise HTTPException(status_code=401, detail="Usuario ou senha invalidos")
+        raise HTTPException(status_code=401, detail="Usuário ou senha inválidos")
 
     now_ts = int(time.time())
     exp = now_ts + TOKEN_TTL_SECONDS
@@ -532,11 +532,11 @@ def me(user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
 def update_me(payload: UserUpdateInput, current: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     user_id = str(current.get("id"))
     if not user_id:
-        raise HTTPException(status_code=401, detail="Usuario invalido")
+        raise HTTPException(status_code=401, detail="Usuário inválido")
 
     target_user = read_user(user_id)
     if not target_user:
-        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
     email_idx, phone_idx, email_sha, phone_sha = load_indexes()
     old_email = normalize_email(str(target_user.get("email") or ""))
@@ -545,7 +545,7 @@ def update_me(payload: UserUpdateInput, current: Dict[str, Any] = Depends(get_cu
     if payload.nome is not None:
         nome = payload.nome.strip()
         if len(nome) < 2:
-            raise HTTPException(status_code=400, detail="Nome invalido")
+            raise HTTPException(status_code=400, detail="Nome inválido")
         target_user["name"] = nome
 
     if payload.email is not None:
@@ -564,7 +564,7 @@ def update_me(payload: UserUpdateInput, current: Dict[str, Any] = Depends(get_cu
         if len(new_phone) in (10, 11):
             new_phone = "55" + new_phone
         if not new_phone.startswith("55") or len(new_phone) not in (12, 13):
-            raise HTTPException(status_code=400, detail="Telefone invalido. Use formato brasileiro com DDD")
+            raise HTTPException(status_code=400, detail="Telefone inválido. Use formato brasileiro com DDD")
         if new_phone != old_phone:
             if new_phone in phone_idx and phone_idx[new_phone] != user_id:
                 raise HTTPException(status_code=409, detail="Telefone ja cadastrado")
@@ -577,7 +577,7 @@ def update_me(payload: UserUpdateInput, current: Dict[str, Any] = Depends(get_cu
     if payload.endereco is not None:
         endereco = payload.endereco.strip()
         if len(endereco) < 3:
-            raise HTTPException(status_code=400, detail="Endereco invalido")
+            raise HTTPException(status_code=400, detail="Endereço inválido")
         target_user["address"] = endereco
 
     if payload.sexo is not None:
@@ -586,7 +586,7 @@ def update_me(payload: UserUpdateInput, current: Dict[str, Any] = Depends(get_cu
     if payload.cep is not None:
         cep = normalize_phone(payload.cep)
         if len(cep) != 8:
-            raise HTTPException(status_code=400, detail="CEP invalido")
+            raise HTTPException(status_code=400, detail="CEP inválido")
         target_user["cep"] = cep
 
     if payload.rua is not None:
@@ -601,13 +601,13 @@ def update_me(payload: UserUpdateInput, current: Dict[str, Any] = Depends(get_cu
     if payload.estado is not None:
         uf = payload.estado.strip().upper()
         if uf and len(uf) != 2:
-            raise HTTPException(status_code=400, detail="Estado invalido. Use UF com 2 letras")
+            raise HTTPException(status_code=400, detail="Estado inválido. Use UF com 2 letras")
         target_user["state"] = uf
 
     if payload.image_url is not None:
         image_url = str(payload.image_url).strip()
         if image_url and not image_url.startswith("data:image/") and not image_url.startswith("http"):
-            raise HTTPException(status_code=400, detail="Formato de imagem invalido")
+            raise HTTPException(status_code=400, detail="Formato de imagem inválido")
         target_user["image_url"] = image_url
 
     # Troca de senha do proprio usuario (exige senha atual)
@@ -687,7 +687,7 @@ def update_user_role(user_id: str, role: str, current: Dict[str, Any] = Depends(
 
     target_user = read_user(user_id)
     if not target_user:
-        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
     target_user["role"] = normalize_role(role)
     target_user["updated_at"] = now_iso()
@@ -708,7 +708,7 @@ def update_user(user_id: str, payload: UserUpdateInput, current: Dict[str, Any] 
 
     target_user = read_user(user_id)
     if not target_user:
-        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
     email_idx, phone_idx, email_sha, phone_sha = load_indexes()
     old_email = normalize_email(str(target_user.get("email") or ""))
@@ -717,7 +717,7 @@ def update_user(user_id: str, payload: UserUpdateInput, current: Dict[str, Any] 
     if payload.nome is not None:
         nome = payload.nome.strip()
         if len(nome) < 2:
-            raise HTTPException(status_code=400, detail="Nome invalido")
+            raise HTTPException(status_code=400, detail="Nome inválido")
         target_user["name"] = nome
 
     if payload.email is not None:
@@ -736,7 +736,7 @@ def update_user(user_id: str, payload: UserUpdateInput, current: Dict[str, Any] 
         if len(new_phone) in (10, 11):
             new_phone = "55" + new_phone
         if not new_phone.startswith("55") or len(new_phone) not in (12, 13):
-            raise HTTPException(status_code=400, detail="Telefone invalido. Use formato brasileiro com DDD")
+            raise HTTPException(status_code=400, detail="Telefone inválido. Use formato brasileiro com DDD")
 
         if new_phone != old_phone:
             if new_phone in phone_idx and phone_idx[new_phone] != user_id:
@@ -750,7 +750,7 @@ def update_user(user_id: str, payload: UserUpdateInput, current: Dict[str, Any] 
     if payload.endereco is not None:
         endereco = payload.endereco.strip()
         if len(endereco) < 3:
-            raise HTTPException(status_code=400, detail="Endereco invalido")
+            raise HTTPException(status_code=400, detail="Endereço inválido")
         target_user["address"] = endereco
 
     if payload.sexo is not None:
@@ -759,7 +759,7 @@ def update_user(user_id: str, payload: UserUpdateInput, current: Dict[str, Any] 
     if payload.cep is not None:
         cep = normalize_phone(payload.cep)
         if len(cep) != 8:
-            raise HTTPException(status_code=400, detail="CEP invalido")
+            raise HTTPException(status_code=400, detail="CEP inválido")
         target_user["cep"] = cep
 
     if payload.rua is not None:
@@ -774,7 +774,7 @@ def update_user(user_id: str, payload: UserUpdateInput, current: Dict[str, Any] 
     if payload.estado is not None:
         uf = payload.estado.strip().upper()
         if uf and len(uf) != 2:
-            raise HTTPException(status_code=400, detail="Estado invalido. Use UF com 2 letras")
+            raise HTTPException(status_code=400, detail="Estado inválido. Use UF com 2 letras")
         target_user["state"] = uf
 
     if payload.active is not None:
@@ -793,3 +793,4 @@ def update_user(user_id: str, payload: UserUpdateInput, current: Dict[str, Any] 
             "allowed_pages": get_allowed_pages_for_user(target_user),
         },
     }
+

@@ -236,7 +236,15 @@ async function getAllowedPagesForUser(user) {
   const role = normalizeRole(user.role);
   const groupPages = await loadGroupPages();
   const pages = Array.isArray(groupPages[role]) ? [...groupPages[role]] : [...DEFAULT_GROUP_PAGES.usuario];
-  if (role !== 'desenvolvedor' && !pages.includes('perfil-usuario.html')) pages.push('perfil-usuario.html');
+  if (role !== 'desenvolvedor') {
+    const marketplaceIdx = pages.indexOf('marketplace.html');
+    if (marketplaceIdx === -1) pages.unshift('marketplace.html');
+    else if (marketplaceIdx > 0) {
+      pages.splice(marketplaceIdx, 1);
+      pages.unshift('marketplace.html');
+    }
+    if (!pages.includes('perfil-usuario.html')) pages.push('perfil-usuario.html');
+  }
   return pages;
 }
 

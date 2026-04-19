@@ -264,8 +264,13 @@ def get_allowed_pages_for_user(user: Dict[str, Any]) -> List[str]:
     role = normalize_role(str(user.get("role") or "usuario"))
     group_pages = load_group_pages()
     pages = list(group_pages.get(role, DEFAULT_GROUP_PAGES["usuario"]))
-    if role != "desenvolvedor" and "perfil-usuario.html" not in pages:
-        pages.append("perfil-usuario.html")
+    if role != "desenvolvedor":
+        if "marketplace.html" in pages:
+            pages = ["marketplace.html"] + [p for p in pages if p != "marketplace.html"]
+        else:
+            pages = ["marketplace.html"] + pages
+        if "perfil-usuario.html" not in pages:
+            pages.append("perfil-usuario.html")
     return pages
 
 

@@ -256,6 +256,9 @@ app.get('/api', (req, res) => {
         update_by_dev: 'PATCH /api/recargas-celular/:id/admin'
       },
       marketplace: {
+        categories_list: 'GET /api/marketplace/categories',
+        categories_create_by_dev: 'POST /api/marketplace/categories',
+        categories_delete_by_dev: 'DELETE /api/marketplace/categories/:categoria',
         products_list: 'GET /api/marketplace/products',
         products_create_by_dev: 'POST /api/marketplace/products',
         products_update_by_dev: 'PATCH /api/marketplace/products/:id',
@@ -342,6 +345,7 @@ async function ensureRepoFiles() {
     },
     { path: 'Atelie/marketplace_products.json', content: [] },
     { path: 'Atelie/marketplace_orders.json', content: [] },
+    { path: 'Atelie/marketplace_categories.json', content: ['Roupas', 'Acessorios', 'Servicos'] },
     { path: 'Atelie/configuracoes_usuario.json', content: { tecidos: {}, forros: {}, aviamentos: {} } },
     { path: 'Atelie/images/index.json', content: [] }
   ];

@@ -9,6 +9,7 @@ class MarketplaceModel {
     this.storage = storage;
     this.productsFilePath = 'Atelie/marketplace_products.json';
     this.ordersFilePath = 'Atelie/marketplace_orders.json';
+    this.categoriesFilePath = 'Atelie/marketplace_categories.json';
   }
 
   async readArray(filePath) {
@@ -129,6 +130,23 @@ class MarketplaceModel {
     };
     await this.saveOrders(items, `Atualizar pedido marketplace #${items[index].id}`);
     return items[index];
+  }
+
+  async getCategories() {
+    const items = await this.readArray(this.categoriesFilePath);
+    const list = items
+      .map((x) => String(x || '').trim())
+      .filter(Boolean);
+    return [...new Set(list)].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }
+
+  async saveCategories(items, message) {
+    const list = [...new Set((Array.isArray(items) ? items : [])
+      .map((x) => String(x || '').trim())
+      .filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    await this.writeArray(this.categoriesFilePath, list, message || 'Atualizar categorias do marketplace');
+    return list;
   }
 }
 

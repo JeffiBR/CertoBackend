@@ -11,7 +11,16 @@ const { MarketplaceModel } = require('../marketplaceModel');
 const router = express.Router();
 const model = new MarketplaceModel(storage);
 
-const ALLOWED_STATUS = new Set(['aguardando_pagamento', 'em_processo', 'concluido', 'erro', 'cancelado']);
+const ALLOWED_STATUS = new Set([
+  'aguardando_pagamento',
+  'em_processo',
+  'entregue',
+  'erro',
+  'corrigido',
+  // compatibilidade com status antigos
+  'concluido',
+  'cancelado'
+]);
 
 function getUserId(req) {
   return String(req.headers['x-user-id'] || req.headers['x-clerk-user-id'] || '').trim().toLowerCase();
@@ -298,7 +307,7 @@ router.patch('/orders/:id/admin', async (req, res) => {
     const payload = req.body || {};
     const status = String(payload.status || '').trim().toLowerCase();
     if (!ALLOWED_STATUS.has(status)) {
-      return res.status(400).json({ success: false, error: 'Status inválido para pedido' });
+      return res.status(400).json({ success: false, error: 'Status inválido para pedido. Use aguardando_pagamento, em_processo, entregue, erro ou corrigido' });
     }
     const comentario = sanitizeText(payload.comentario_desenvolvedor, 500);
     const updated = await model.updateOrder(req.params.id, {

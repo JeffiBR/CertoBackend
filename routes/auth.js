@@ -10,8 +10,9 @@ const PHONE_INDEX_PATH = 'auth/index_by_phone.json';
 const GROUP_PAGES_PATH = 'auth/group_pages.json';
 
 const DEFAULT_GROUP_PAGES = {
-  usuario: ['index.html', 'precificacao.html', 'produtos-atelie.html', 'configuracoes.html', 'recarga-celular.html', 'historico-compras.html', 'marketplace.html'],
+  usuario: ['marketplace.html', 'index.html', 'precificacao.html', 'produtos-atelie.html', 'configuracoes.html', 'recarga-celular.html', 'historico-compras.html'],
   administrador: [
+    'marketplace.html',
     'index.html',
     'dashboard.html',
     'renovacoes.html',
@@ -25,8 +26,7 @@ const DEFAULT_GROUP_PAGES = {
     'produtos-atelie.html',
     'configuracoes.html',
     'recarga-celular.html',
-    'historico-compras.html',
-    'marketplace.html'
+    'historico-compras.html'
   ],
   desenvolvedor: ['*']
 };
@@ -549,6 +549,33 @@ router.get('/auth/users', async (req, res) => withErrors(res, async () => {
   }
   users.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
   res.json({ success: true, data: users });
+}));
+
+router.get('/auth/users/online', async (req, res) => withErrors(res, async () => {
+  const current = await getCurrentUser(req);
+  ensureDeveloper(current);
+
+  const { emailIdx } = await loadIndexes();
+  const uniqueIds = [...new Set(Object.values(emailIdx || {}))];
+  const online = [];
+
+  for (const userId of uniqueIds) {
+    const u = await readUser(userId);
+    if (!u || u.active === false) continue;
+    const session = u.active_session && typeof u.active_session === 'object' ? u.active_session : null;
+    if (!isSessionOnline(session)) continue;
+
+    online.push({
+      ...sanitizeUserOutput(u),
+      online: true,
+      session_id: String(session.id || ''),
+      session_last_seen: String(session.last_seen || session.updated_at || session.created_at || ''),
+      session_created_at: String(session.created_at || '')
+    });
+  }
+
+  online.sort((a, b) => String(b.session_last_seen || '').localeCompare(String(a.session_last_seen || '')));
+  res.json({ success: true, data: online });
 }));
 
 router.get('/auth/permissions', async (req, res) => withErrors(res, async () => {

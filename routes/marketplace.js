@@ -110,9 +110,6 @@ function formatOrderItem(product, qty) {
 
 router.get('/products', async (req, res) => {
   try {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
-
     const items = await model.getProducts();
     const ordered = items.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
     if (isDeveloper(req)) {
@@ -128,8 +125,6 @@ router.get('/products', async (req, res) => {
 
 router.get('/categories', async (req, res) => {
   try {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
     const categories = await model.getCategories();
     return res.json({ success: true, count: categories.length, data: categories });
   } catch (error) {
@@ -321,6 +316,23 @@ router.patch('/orders/:id/admin', async (req, res) => {
     return res.status(500).json({ success: false, error: error.message });
   }
 });
+
+async function removeOrderByAdmin(req, res) {
+  try {
+    if (!isDeveloper(req)) {
+      return res.status(403).json({ success: false, error: 'Apenas desenvolvedor pode excluir pedidos' });
+    }
+    const removed = await model.deleteOrder(req.params.id);
+    if (!removed) return res.status(404).json({ success: false, error: 'Pedido não encontrado' });
+    return res.json({ success: true, data: { id: removed.id } });
+  } catch (error) {
+    console.error('Erro ao excluir pedido do marketplace:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+router.delete('/orders/:id/admin', removeOrderByAdmin);
+router.post('/orders/:id/admin/delete', removeOrderByAdmin);
 
 module.exports = router;
 

@@ -226,8 +226,6 @@ async function removeRecargaById(id) {
 
 router.get('/config', async (req, res) => {
   try {
-    const userId = getUserId(req);
-    if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado' });
     const cfg = await loadConfig();
     return res.json({ success: true, data: cfg });
   } catch (error) {

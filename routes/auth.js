@@ -1,5 +1,6 @@
 ﻿const express = require('express');
 const crypto = require('crypto');
+const fetch = require('node-fetch');
 const { storage } = require('../githubStorage');
 
 const router = express.Router();
@@ -34,6 +35,14 @@ const DEFAULT_GROUP_PAGES = {
 const AUTH_SECRET = String(process.env.AUTH_SECRET || 'preco-certo-node-auth-secret');
 const TOKEN_TTL_SECONDS = Number(process.env.AUTH_TOKEN_TTL_SECONDS || 2592000);
 const ACTIVE_SESSION_IDLE_SECONDS = Number(process.env.AUTH_ACTIVE_SESSION_IDLE_SECONDS || 900);
+const PASSWORD_RESET_TTL_SECONDS = Number(process.env.AUTH_PASSWORD_RESET_TTL_SECONDS || 900);
+const PASSWORD_RESET_CODE_LENGTH = Math.max(4, Math.min(8, Number(process.env.AUTH_PASSWORD_RESET_CODE_LENGTH || 6)));
+const PASSWORD_RESET_EXPOSE_CODE = ['1', 'true', 'yes', 'on'].includes(String(process.env.AUTH_PASSWORD_RESET_EXPOSE_CODE || 'false').trim().toLowerCase());
+const AUTH_PASSWORD_RESET_PAGE_URL = String(process.env.AUTH_PASSWORD_RESET_PAGE_URL || 'https://jeffibr.github.io/Service/reset-password.html').trim();
+const BREVO_API_KEY = String(process.env.BREVO_API_KEY || '').trim();
+const BREVO_SENDER_EMAIL = String(process.env.BREVO_SENDER_EMAIL || '').trim();
+const BREVO_SENDER_NAME = String(process.env.BREVO_SENDER_NAME || 'Preco Certo').trim();
+const BREVO_API_BASE = String(process.env.BREVO_API_BASE || 'https://api.brevo.com').trim().replace(/\/+$/, '');
 
 function nowIso() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -45,6 +54,82 @@ function normalizeEmail(value) {
 
 function normalizePhone(value) {
   return String(value || '').replace(/\D+/g, '');
+}
+
+function isBrevoConfigured() {
+  return !!(BREVO_API_KEY && BREVO_SENDER_EMAIL && BREVO_API_BASE);
+}
+
+function generatePasswordResetCode() {
+  let code = '';
+  const chars = '0123456789';
+  for (let i = 0; i < PASSWORD_RESET_CODE_LENGTH; i += 1) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function hashPasswordResetCode(code) {
+  return crypto.createHash('sha256').update(String(code || '')).digest('hex');
+}
+
+function buildPasswordResetLink(email, code) {
+  const base = AUTH_PASSWORD_RESET_PAGE_URL || 'https://jeffibr.github.io/Service/reset-password.html';
+  const qs = new URLSearchParams({
+    mode: 'signin',
+    recover: '1',
+    recover_email: String(email || ''),
+    recover_code: String(code || '')
+  }).toString();
+  return `${base}${base.includes('?') ? '&' : '?'}${qs}`;
+}
+
+async function sendPasswordResetEmail(toEmail, toName, code, resetLink) {
+  if (!isBrevoConfigured()) throw httpError(500, 'Brevo não configurado para envio de recuperação.');
+
+  const ttlMinutes = Math.max(1, Math.floor(PASSWORD_RESET_TTL_SECONDS / 60));
+  const safeName = String(toName || 'Usuario').trim() || 'Usuario';
+  const htmlContent = `
+    <html>
+      <body style="font-family:Arial,sans-serif;background:#0b0c10;color:#f4f4f5;padding:20px;">
+        <div style="max-width:520px;margin:0 auto;background:#151821;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:20px;">
+          <h2 style="margin:0 0 12px;">Recuperacao de senha</h2>
+          <p style="margin:0 0 10px;">Ola, ${safeName}.</p>
+          <p style="margin:0 0 10px;">Use o codigo abaixo para redefinir sua senha:</p>
+          <div style="font-size:28px;font-weight:800;letter-spacing:4px;background:#0f1118;border:1px dashed #fbbf24;border-radius:10px;padding:14px;text-align:center;color:#fbbf24;">
+            ${String(code || '')}
+          </div>
+          <p style="margin:14px 0 8px;">Ou clique no botao abaixo para abrir a tela de redefinicao:</p>
+          <p style="margin:0 0 8px;">
+            <a href="${String(resetLink || '')}" style="display:inline-block;padding:10px 14px;border-radius:8px;background:#fbbf24;color:#111;text-decoration:none;font-weight:800;">Redefinir senha</a>
+          </p>
+          <p style="margin:6px 0 0;color:#a1a1aa;font-size:12px;word-break:break-all;">Link: ${String(resetLink || '')}</p>
+          <p style="margin:14px 0 0;color:#a1a1aa;">Este codigo expira em aproximadamente ${ttlMinutes} minuto(s).</p>
+          <p style="margin:8px 0 0;color:#a1a1aa;">Se voce nao solicitou esta alteracao, ignore este e-mail.</p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const response = await fetch(`${BREVO_API_BASE}/v3/smtp/email`, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': BREVO_API_KEY
+    },
+    body: JSON.stringify({
+      sender: { email: BREVO_SENDER_EMAIL, name: BREVO_SENDER_NAME },
+      to: [{ email: toEmail, name: safeName }],
+      subject: 'Codigo de recuperacao de senha - Preco Certo',
+      htmlContent
+    })
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw httpError(500, `Falha ao enviar e-mail Brevo: ${response.status} ${body}`);
+  }
 }
 
 function normalizeRole(value) {
@@ -460,6 +545,92 @@ router.post('/auth/login', async (req, res) => withErrors(res, async () => {
       user: sanitizeUserOutput(user),
       allowed_pages: await getAllowedPagesForUser(user)
     }
+  });
+}));
+
+router.post('/auth/password/forgot', async (req, res) => withErrors(res, async () => {
+  if (!storage.isConfigured()) throw httpError(500, 'GitHub Storage não configurado');
+  const payload = req.body || {};
+  const email = normalizeEmail(payload.email || payload.identifier || '');
+  if (!email || !isValidEmail(email)) throw httpError(400, 'Informe um e-mail válido');
+
+  const { emailIdx } = await loadIndexes();
+  const userId = emailIdx[email];
+
+  // Não expõe existência do usuário.
+  if (!userId) {
+    return res.json({
+      success: true,
+      data: { message: 'Se o e-mail existir, enviaremos um link de recuperação.' }
+    });
+  }
+
+  const user = await readUser(userId);
+  if (!user || user.active === false) {
+    return res.json({
+      success: true,
+      data: { message: 'Se o e-mail existir, enviaremos um link de recuperação.' }
+    });
+  }
+
+  const code = generatePasswordResetCode();
+  const expiresAt = new Date(Date.now() + (Math.max(60, PASSWORD_RESET_TTL_SECONDS) * 1000)).toISOString();
+  user.password_reset = {
+    code_hash: hashPasswordResetCode(code),
+    expires_at: expiresAt,
+    requested_at: nowIso()
+  };
+  user.updated_at = nowIso();
+  await writeUser(user, `Solicitar recuperação de senha do usuario ${user.id}`);
+
+  const resetLink = buildPasswordResetLink(email, code);
+  await sendPasswordResetEmail(email, user.name || 'Usuario', code, resetLink);
+
+  const response = {
+    message: 'Se o e-mail existir, enviaremos um link de recuperação.'
+  };
+  if (PASSWORD_RESET_EXPOSE_CODE) response.reset_code = code;
+  res.json({ success: true, data: response });
+}));
+
+router.post('/auth/password/reset', async (req, res) => withErrors(res, async () => {
+  if (!storage.isConfigured()) throw httpError(500, 'GitHub Storage não configurado');
+  const payload = req.body || {};
+  const email = normalizeEmail(payload.email || payload.identifier || '');
+  const code = String(payload.code || '').trim();
+  const newPassword = String(payload.new_password || payload.newPassword || payload.password || '').trim();
+
+  if (!email || !isValidEmail(email)) throw httpError(400, 'Informe um e-mail válido');
+  if (!code) throw httpError(400, 'Informe o código de recuperação');
+  if (newPassword.length < 6) throw httpError(400, 'Nova senha deve ter no minimo 6 caracteres');
+
+  const { emailIdx } = await loadIndexes();
+  const userId = emailIdx[email];
+  if (!userId) throw httpError(400, 'Código inválido ou expirado');
+
+  const user = await readUser(userId);
+  if (!user || user.active === false) throw httpError(400, 'Código inválido ou expirado');
+
+  const resetData = (user.password_reset && typeof user.password_reset === 'object') ? user.password_reset : null;
+  if (!resetData || !resetData.code_hash || !resetData.expires_at) throw httpError(400, 'Código inválido ou expirado');
+
+  const expiresAtMs = Date.parse(String(resetData.expires_at || ''));
+  if (!Number.isFinite(expiresAtMs) || expiresAtMs < Date.now()) throw httpError(400, 'Código inválido ou expirado');
+
+  const expected = String(resetData.code_hash || '');
+  const got = hashPasswordResetCode(code);
+  if (!expected || expected.length !== got.length || !crypto.timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(got, 'utf8'))) {
+    throw httpError(400, 'Código inválido ou expirado');
+  }
+
+  user.password = hashPassword(newPassword);
+  user.password_reset = null;
+  user.updated_at = nowIso();
+  await writeUser(user, `Redefinir senha do usuario ${user.id}`);
+
+  res.json({
+    success: true,
+    data: { message: 'Senha redefinida com sucesso.' }
   });
 }));
 

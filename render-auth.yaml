@@ -22,3 +22,15 @@
         sync: false
       - key: AUTH_TOKEN_TTL_SECONDS
         value: 2592000
+      - key: AUTH_PASSWORD_RESET_TTL_SECONDS
+        value: 900
+      - key: AUTH_PASSWORD_RESET_CODE_LENGTH
+        value: 6
+      - key: AUTH_PASSWORD_RESET_EXPOSE_CODE
+        value: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: Preço Certo

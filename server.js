@@ -80,6 +80,11 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return next();
   if (!req.path.startsWith('/api')) return next();
   if (req.path === '/api' || req.path === '/api/health' || req.path === '/api/wake-up') return next();
+  const isPublicMarketplaceRead = req.method === 'GET'
+    && (req.path === '/api/marketplace/products' || req.path === '/api/marketplace/categories');
+  if (isPublicMarketplaceRead) return next();
+  const isPublicRecargaRead = req.method === 'GET' && req.path === '/api/recargas-celular/config';
+  if (isPublicRecargaRead) return next();
 
   const userId = (req.headers['x-user-id'] || req.headers['x-clerk-user-id'] || '').toString().trim().toLowerCase();
   if (!userId || userId === 'public') {

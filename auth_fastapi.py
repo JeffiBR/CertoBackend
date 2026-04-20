@@ -106,6 +106,13 @@ DEFAULT_GROUP_PAGES = {
 
 AUTH_SECRET = os.getenv("AUTH_SECRET", "preco-certo-fastapi-dev-secret")
 TOKEN_TTL_SECONDS = int(os.getenv("AUTH_TOKEN_TTL_SECONDS", "2592000"))
+PASSWORD_RESET_TTL_SECONDS = int(os.getenv("AUTH_PASSWORD_RESET_TTL_SECONDS", "900"))
+PASSWORD_RESET_CODE_LENGTH = max(4, min(8, int(os.getenv("AUTH_PASSWORD_RESET_CODE_LENGTH", "6"))))
+PASSWORD_RESET_EXPOSE_CODE = str(os.getenv("AUTH_PASSWORD_RESET_EXPOSE_CODE", "false")).strip().lower() in {"1", "true", "yes", "on"}
+BREVO_API_KEY = str(os.getenv("BREVO_API_KEY", "")).strip()
+BREVO_SENDER_EMAIL = str(os.getenv("BREVO_SENDER_EMAIL", "")).strip()
+BREVO_SENDER_NAME = str(os.getenv("BREVO_SENDER_NAME", "Preço Certo")).strip()
+BREVO_API_BASE = str(os.getenv("BREVO_API_BASE", "https://api.brevo.com")).strip().rstrip("/")
 
 
 def now_iso() -> str:
@@ -293,6 +300,16 @@ class LoginInput(BaseModel):
     password: str = Field(min_length=1)
 
 
+class ForgotPasswordInput(BaseModel):
+    identifier: str = Field(min_length=3)
+
+
+class ResetPasswordInput(BaseModel):
+    identifier: str = Field(min_length=3)
+    code: str = Field(min_length=4, max_length=12)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
 class GroupPagesInput(BaseModel):
     pages: List[str]
 
@@ -387,6 +404,73 @@ def get_optional_user(authorization: Optional[str] = Header(default=None)) -> Op
 def ensure_developer(user: Dict[str, Any]) -> None:
     if normalize_role(str(user.get("role") or "usuario")) != "desenvolvedor":
         raise HTTPException(status_code=403, detail="Apenas desenvolvedor pode executar essa acao")
+
+
+def resolve_user_id_by_identifier(identifier: str, email_idx: Dict[str, str], phone_idx: Dict[str, str]) -> Optional[str]:
+    normalized_email = normalize_email(identifier)
+    user_id = email_idx.get(normalized_email)
+    if user_id:
+        return user_id
+
+    normalized_phone = normalize_phone(identifier)
+    if normalized_phone:
+        # Compatibilidade: aceita telefone com ou sem DDI 55 na recuperação.
+        if len(normalized_phone) in (10, 11):
+            normalized_phone = "55" + normalized_phone
+        return phone_idx.get(normalized_phone)
+    return None
+
+
+def generate_password_reset_code() -> str:
+    return "".join(secrets.choice("0123456789") for _ in range(PASSWORD_RESET_CODE_LENGTH))
+
+
+def is_brevo_configured() -> bool:
+    return bool(BREVO_API_KEY and BREVO_SENDER_EMAIL and BREVO_API_BASE)
+
+
+def send_password_reset_email(to_email: str, to_name: str, code: str) -> None:
+    if not is_brevo_configured():
+        raise RuntimeError("Brevo não configurado")
+
+    ttl_minutes = max(1, int(PASSWORD_RESET_TTL_SECONDS / 60))
+    safe_name = (to_name or "Usuário").strip()
+    html_content = f"""
+      <html>
+        <body style="font-family:Arial,sans-serif;background:#0b0c10;color:#f4f4f5;padding:20px;">
+          <div style="max-width:520px;margin:0 auto;background:#151821;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:20px;">
+            <h2 style="margin:0 0 12px;">Recuperação de senha</h2>
+            <p style="margin:0 0 10px;">Olá, {safe_name}.</p>
+            <p style="margin:0 0 10px;">Use o código abaixo para redefinir sua senha:</p>
+            <div style="font-size:28px;font-weight:800;letter-spacing:4px;background:#0f1118;border:1px dashed #fbbf24;border-radius:10px;padding:14px;text-align:center;color:#fbbf24;">
+              {code}
+            </div>
+            <p style="margin:14px 0 0;color:#a1a1aa;">Este código expira em aproximadamente {ttl_minutes} minuto(s).</p>
+            <p style="margin:8px 0 0;color:#a1a1aa;">Se você não solicitou esta alteração, ignore este e-mail.</p>
+          </div>
+        </body>
+      </html>
+    """
+
+    payload = {
+        "sender": {"email": BREVO_SENDER_EMAIL, "name": BREVO_SENDER_NAME},
+        "to": [{"email": to_email, "name": safe_name}],
+        "subject": "Código de recuperação de senha - Preço Certo",
+        "htmlContent": html_content,
+    }
+
+    response = requests.post(
+        f"{BREVO_API_BASE}/v3/smtp/email",
+        headers={
+            "accept": "application/json",
+            "content-type": "application/json",
+            "api-key": BREVO_API_KEY,
+        },
+        json=payload,
+        timeout=30,
+    )
+    if not response.ok:
+        raise RuntimeError(f"Falha ao enviar e-mail Brevo: {response.status_code} - {response.text}")
 
 
 @app.get("/")
@@ -489,10 +573,7 @@ def login(payload: LoginInput) -> Dict[str, Any]:
 
     email_idx, phone_idx, _, _ = load_indexes()
 
-    user_id = email_idx.get(normalize_email(identifier))
-    if not user_id:
-        normalized_phone = normalize_phone(identifier)
-        user_id = phone_idx.get(normalized_phone)
+    user_id = resolve_user_id_by_identifier(identifier, email_idx, phone_idx)
 
     if not user_id:
         raise HTTPException(status_code=401, detail="Usuário ou senha inválidos")
@@ -523,6 +604,92 @@ def login(payload: LoginInput) -> Dict[str, Any]:
             "allowed_pages": get_allowed_pages_for_user(user),
         },
     }
+
+
+@app.post("/auth/password/forgot")
+def forgot_password(payload: ForgotPasswordInput) -> Dict[str, Any]:
+    if not storage.is_configured():
+        raise HTTPException(status_code=500, detail="GitHub Storage não configurado")
+
+    identifier = str(payload.identifier or "").strip()
+    if not identifier:
+        raise HTTPException(status_code=400, detail="Informe e-mail ou telefone")
+
+    email_idx, phone_idx, _, _ = load_indexes()
+    user_id = resolve_user_id_by_identifier(identifier, email_idx, phone_idx)
+    exposed_code: Optional[str] = None
+
+    if user_id:
+        user = read_user(user_id)
+        if user and user.get("active", True):
+            reset_code = generate_password_reset_code()
+            user["password_reset"] = {
+                "code": hash_password(reset_code),
+                "expires_at": int(time.time()) + PASSWORD_RESET_TTL_SECONDS,
+                "requested_at": now_iso(),
+            }
+            user["updated_at"] = now_iso()
+            write_user(user, message=f"Gerar codigo de recuperacao de senha para usuario {user_id}")
+            print(f"[AUTH] Código de recuperação para {user.get('email') or user.get('phone') or user_id}: {reset_code}")
+            try:
+                user_email = normalize_email(str(user.get("email") or ""))
+                if user_email:
+                    send_password_reset_email(user_email, str(user.get("name") or "Usuário"), reset_code)
+                    print(f"[AUTH] E-mail de recuperação enviado via Brevo para {user_email}")
+            except Exception as mail_err:
+                print(f"[AUTH] Falha no envio Brevo: {mail_err}")
+            if PASSWORD_RESET_EXPOSE_CODE:
+                exposed_code = reset_code
+
+    data: Dict[str, Any] = {
+        "message": "Se o usuário existir, um código de recuperação foi gerado.",
+        "expires_in": PASSWORD_RESET_TTL_SECONDS,
+    }
+    if exposed_code:
+        data["reset_code"] = exposed_code
+    return {"success": True, "data": data}
+
+
+@app.post("/auth/password/reset")
+def reset_password(payload: ResetPasswordInput) -> Dict[str, Any]:
+    if not storage.is_configured():
+        raise HTTPException(status_code=500, detail="GitHub Storage não configurado")
+
+    identifier = str(payload.identifier or "").strip()
+    code = normalize_phone(str(payload.code or "").strip())
+    new_password = str(payload.new_password or "")
+    if not identifier:
+        raise HTTPException(status_code=400, detail="Informe e-mail ou telefone")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter no minimo 6 caracteres")
+
+    email_idx, phone_idx, _, _ = load_indexes()
+    user_id = resolve_user_id_by_identifier(identifier, email_idx, phone_idx)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+
+    user = read_user(user_id)
+    if not user or not user.get("active", True):
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+
+    reset_data = user.get("password_reset", {})
+    if not isinstance(reset_data, dict):
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+
+    expires_at = int(reset_data.get("expires_at", 0) or 0)
+    if expires_at <= int(time.time()):
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+
+    code_data = reset_data.get("code", {})
+    if not isinstance(code_data, dict) or not verify_password(code, code_data):
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+
+    user["password"] = hash_password(new_password)
+    user.pop("password_reset", None)
+    user["updated_at"] = now_iso()
+    write_user(user, message=f"Redefinir senha por recuperação para usuario {user_id}")
+
+    return {"success": True, "data": {"message": "Senha redefinida com sucesso. Faça login com a nova senha."}}
 
 
 @app.get("/auth/me")
@@ -631,6 +798,7 @@ def update_me(payload: UserUpdateInput, current: Dict[str, Any] = Depends(get_cu
             raise HTTPException(status_code=401, detail="Senha atual incorreta")
 
         target_user["password"] = hash_password(senha_nova)
+        target_user.pop("password_reset", None)
 
     target_user["updated_at"] = now_iso()
     write_user(target_user, message=f"Atualizar perfil do usuario {user_id}")

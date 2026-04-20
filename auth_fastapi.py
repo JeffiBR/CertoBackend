@@ -7,7 +7,7 @@ import re
 import secrets
 import time
 import uuid
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -113,6 +113,7 @@ BREVO_API_KEY = str(os.getenv("BREVO_API_KEY", "")).strip()
 BREVO_SENDER_EMAIL = str(os.getenv("BREVO_SENDER_EMAIL", "")).strip()
 BREVO_SENDER_NAME = str(os.getenv("BREVO_SENDER_NAME", "Preço Certo")).strip()
 BREVO_API_BASE = str(os.getenv("BREVO_API_BASE", "https://api.brevo.com")).strip().rstrip("/")
+AUTH_PASSWORD_RESET_PAGE_URL = str(os.getenv("AUTH_PASSWORD_RESET_PAGE_URL", "https://jeffibr.github.io/Service/reset-password.html")).strip()
 
 
 def now_iso() -> str:
@@ -301,7 +302,8 @@ class LoginInput(BaseModel):
 
 
 class ForgotPasswordInput(BaseModel):
-    identifier: str = Field(min_length=3)
+    email: Optional[EmailStr] = None
+    identifier: Optional[str] = None
 
 
 class ResetPasswordInput(BaseModel):
@@ -425,11 +427,23 @@ def generate_password_reset_code() -> str:
     return "".join(secrets.choice("0123456789") for _ in range(PASSWORD_RESET_CODE_LENGTH))
 
 
+def build_password_reset_link(email: str, code: str) -> str:
+    base = AUTH_PASSWORD_RESET_PAGE_URL or "https://jeffibr.github.io/Service/reset-password.html"
+    query = urlencode({
+        "mode": "signin",
+        "recover": "1",
+        "recover_email": email,
+        "recover_code": code,
+    })
+    separator = "&" if "?" in base else "?"
+    return f"{base}{separator}{query}"
+
+
 def is_brevo_configured() -> bool:
     return bool(BREVO_API_KEY and BREVO_SENDER_EMAIL and BREVO_API_BASE)
 
 
-def send_password_reset_email(to_email: str, to_name: str, code: str) -> None:
+def send_password_reset_email(to_email: str, to_name: str, code: str, reset_link: str) -> None:
     if not is_brevo_configured():
         raise RuntimeError("Brevo não configurado")
 
@@ -445,6 +459,11 @@ def send_password_reset_email(to_email: str, to_name: str, code: str) -> None:
             <div style="font-size:28px;font-weight:800;letter-spacing:4px;background:#0f1118;border:1px dashed #fbbf24;border-radius:10px;padding:14px;text-align:center;color:#fbbf24;">
               {code}
             </div>
+            <p style="margin:14px 0 8px;">Ou clique no botão abaixo para abrir a tela de redefinição:</p>
+            <p style="margin:0 0 8px;">
+              <a href="{reset_link}" style="display:inline-block;padding:10px 14px;border-radius:8px;background:#fbbf24;color:#111;text-decoration:none;font-weight:800;">Redefinir senha</a>
+            </p>
+            <p style="margin:6px 0 0;color:#a1a1aa;font-size:12px;word-break:break-all;">Link: {reset_link}</p>
             <p style="margin:14px 0 0;color:#a1a1aa;">Este código expira em aproximadamente {ttl_minutes} minuto(s).</p>
             <p style="margin:8px 0 0;color:#a1a1aa;">Se você não solicitou esta alteração, ignore este e-mail.</p>
           </div>
@@ -611,18 +630,21 @@ def forgot_password(payload: ForgotPasswordInput) -> Dict[str, Any]:
     if not storage.is_configured():
         raise HTTPException(status_code=500, detail="GitHub Storage não configurado")
 
-    identifier = str(payload.identifier or "").strip()
-    if not identifier:
-        raise HTTPException(status_code=400, detail="Informe e-mail ou telefone")
+    email = normalize_email(str(payload.email or "").strip())
+    if not email and payload.identifier:
+        email = normalize_email(str(payload.identifier or "").strip())
+    if not email:
+        raise HTTPException(status_code=400, detail="Informe o e-mail cadastrado")
 
-    email_idx, phone_idx, _, _ = load_indexes()
-    user_id = resolve_user_id_by_identifier(identifier, email_idx, phone_idx)
+    email_idx, _, _, _ = load_indexes()
+    user_id = email_idx.get(email)
     exposed_code: Optional[str] = None
 
     if user_id:
         user = read_user(user_id)
         if user and user.get("active", True):
             reset_code = generate_password_reset_code()
+            reset_link = build_password_reset_link(normalize_email(str(user.get("email") or email)), reset_code)
             user["password_reset"] = {
                 "code": hash_password(reset_code),
                 "expires_at": int(time.time()) + PASSWORD_RESET_TTL_SECONDS,
@@ -634,7 +656,7 @@ def forgot_password(payload: ForgotPasswordInput) -> Dict[str, Any]:
             try:
                 user_email = normalize_email(str(user.get("email") or ""))
                 if user_email:
-                    send_password_reset_email(user_email, str(user.get("name") or "Usuário"), reset_code)
+                    send_password_reset_email(user_email, str(user.get("name") or "Usuário"), reset_code, reset_link)
                     print(f"[AUTH] E-mail de recuperação enviado via Brevo para {user_email}")
             except Exception as mail_err:
                 print(f"[AUTH] Falha no envio Brevo: {mail_err}")

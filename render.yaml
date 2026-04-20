@@ -34,6 +34,22 @@ services:
         value: true
       - key: REQUIRE_USER_CONTEXT
         value: true
+      - key: AUTH_PASSWORD_RESET_TTL_SECONDS
+        value: 900
+      - key: AUTH_PASSWORD_RESET_CODE_LENGTH
+        value: 6
+      - key: AUTH_PASSWORD_RESET_EXPOSE_CODE
+        value: false
+      - key: AUTH_PASSWORD_RESET_PAGE_URL
+        value: https://jeffibr.github.io/Service/reset-password.html
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: Preco Certo
+      - key: BREVO_API_BASE
+        value: https://api.brevo.com
 
 # Dica: Após criar o serviço, acesse o dashboard do Render
 # e configure o GITHUB_TOKEN nas variáveis de ambiente

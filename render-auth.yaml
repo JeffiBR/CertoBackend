@@ -34,3 +34,5 @@
         sync: false
       - key: BREVO_SENDER_NAME
         value: Preço Certo
+      - key: AUTH_PASSWORD_RESET_PAGE_URL
+        value: https://jeffibr.github.io/Service/reset-password.html

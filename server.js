@@ -265,7 +265,8 @@ app.get('/api', (req, res) => {
         products_delete_by_dev: 'DELETE /api/marketplace/products/:id',
         orders_list: 'GET /api/marketplace/orders',
         orders_create: 'POST /api/marketplace/orders',
-        orders_update_by_dev: 'PATCH /api/marketplace/orders/:id/admin'
+        orders_update_by_dev: 'PATCH /api/marketplace/orders/:id/admin',
+        orders_delete_by_dev: 'DELETE /api/marketplace/orders/:id/admin'
       },
       configuracoes: {
         get: 'GET /api/configuracoes',

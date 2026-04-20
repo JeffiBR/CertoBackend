@@ -132,6 +132,16 @@ class MarketplaceModel {
     return items[index];
   }
 
+  async deleteOrder(id) {
+    const items = await this.getOrders();
+    const index = items.findIndex((o) => String(o.id) === String(id));
+    if (index < 0) return null;
+    const removed = items[index];
+    items.splice(index, 1);
+    await this.saveOrders(items, `Excluir pedido marketplace #${removed.id}`);
+    return removed;
+  }
+
   async getCategories() {
     const items = await this.readArray(this.categoriesFilePath);
     const list = items

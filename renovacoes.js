@@ -1,14 +1,10 @@
-/**
- * Rotas de Renovações - Apenas GitHub Storage
+﻿/**
+ * Rotas de Renovações - paths ajustados
  */
 
 const express = require('express');
 const router = express.Router();
-const { renovacoesModel, clientesModel, storage } = require('../services/githubStorage');
-
-// =============================================
-// FUNÇÕES AUXILIARES
-// =============================================
+const { renovacoesModel, clientesModel, storage } = require('../githubStorage');
 
 function formatarData(data) {
   if (!data) return '-';
@@ -35,12 +31,7 @@ function obterNomePlano(plano) {
 function calcularNovoVencimento(dataVencimentoAtual, planoNovo) {
   const hoje = new Date();
   let novaData = new Date(dataVencimentoAtual);
-  
-  // Se já expirou, começa de hoje
-  if (novaData < hoje) {
-    novaData = new Date();
-  }
-  
+  if (novaData < hoje) novaData = new Date();
   switch(planoNovo) {
     case '1_mes_sem_adultos':
     case '1_mes_com_adultos':
@@ -63,121 +54,177 @@ function calcularNovoVencimento(dataVencimentoAtual, planoNovo) {
       novaData.setFullYear(novaData.getFullYear() + 1);
       break;
   }
-  
   return novaData.toISOString().split('T')[0];
 }
 
-// =============================================
-// ROTAS
-// =============================================
-
-/**
- * GET /api/renovacoes
- * Lista todas as renovações
- */
 router.get('/', async (req, res) => {
   try {
     const renovacoes = await renovacoesModel.getAll();
-    
-    // Ordenar por data mais recente
-    renovacoes.sort((a, b) => 
-      new Date(b.data_renovacao) - new Date(a.data_renovacao)
-    );
-    
-    res.json({
-      success: true,
-      count: renovacoes.length,
-      data: renovacoes
-    });
+    renovacoes.sort((a, b) => new Date(b.data_renovacao) - new Date(a.data_renovacao));
+    res.json({ success: true, count: renovacoes.length, data: renovacoes });
   } catch (error) {
-    console.error('❌ Erro ao buscar renovações:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('Erro ao buscar renovações:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-/**
- * GET /api/renovacoes/:id
- * Busca uma renovação por ID
- */
+function getAnoMesFromISO(dataIso) {
+  if (!dataIso || typeof dataIso !== 'string') return null;
+  return dataIso.slice(0, 7);
+}
+
+function validarAnoMes(anoMes) {
+  return typeof anoMes === 'string' && /^\d{4}-\d{2}$/.test(anoMes);
+}
+
+router.get('/historico/meses', async (req, res) => {
+  try {
+    const renovacoes = await renovacoesModel.getAll();
+    const meses = Array.from(new Set(
+      renovacoes.map(r => getAnoMesFromISO(r.data_renovacao)).filter(Boolean)
+    )).sort().reverse();
+
+    res.json({ success: true, count: meses.length, data: meses });
+  } catch (error) {
+    console.error('Erro ao buscar meses de histórico:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/historico/:anoMes', async (req, res) => {
+  try {
+    const { anoMes } = req.params;
+    if (!validarAnoMes(anoMes)) {
+      return res.status(400).json({ success: false, error: 'Parâmetro anoMes inválido (use YYYY-MM)' });
+    }
+
+    const [renovacoes, clientes] = await Promise.all([
+      renovacoesModel.getAll(),
+      clientesModel.getAll()
+    ]);
+
+    const renovacoesMes = renovacoes.filter(r => getAnoMesFromISO(r.data_renovacao) === anoMes);
+
+    const renovacaoPorCliente = new Map();
+    for (const r of renovacoesMes) {
+      const key = r.cliente_id ? `id:${r.cliente_id}` : `nome:${r.cliente_nome || ''}`;
+      const existente = renovacaoPorCliente.get(key);
+      if (!existente || new Date(r.data_renovacao) > new Date(existente.data_renovacao)) {
+        renovacaoPorCliente.set(key, r);
+      }
+    }
+
+    const clientesPorId = new Map(clientes.map(c => [String(c.id), c]));
+    const clientesRenovaram = Array.from(renovacaoPorCliente.values()).map(r => {
+      const cliente = r.cliente_id ? clientesPorId.get(String(r.cliente_id)) : null;
+      return {
+        cliente_id: r.cliente_id || (cliente && cliente.id) || null,
+        cliente_nome: r.cliente_nome || (cliente && cliente.nome) || '-',
+        cliente_telefone: r.cliente_telefone || (cliente && cliente.telefone) || '-',
+        revendedor: r.revendedor || (cliente && cliente.revendedor) || null,
+        servidor: r.servidor || (cliente && cliente.servidor) || null,
+        data_renovacao: r.data_renovacao,
+        plano_novo: r.plano_novo,
+        valor_renovacao: r.valor_renovacao,
+        data_vencimento_novo: r.data_vencimento_novo
+      };
+    });
+
+    const renovaramKeys = new Set(
+      clientesRenovaram.map(c => c.cliente_id ? `id:${c.cliente_id}` : `nome:${c.cliente_nome}`)
+    );
+
+    const clientesNaoRenovaram = clientes.filter(c => {
+      const key = c.id ? `id:${c.id}` : `nome:${c.nome}`;
+      return !renovaramKeys.has(key);
+    }).map(c => ({
+      cliente_id: c.id || null,
+      cliente_nome: c.nome || '-',
+      cliente_telefone: c.telefone || '-',
+      revendedor: c.revendedor || null,
+      servidor: c.servidor || null,
+      data_vencimento: c.data_vencimento || null
+    }));
+
+    const valorTotalMes = renovacoesMes.reduce((acc, r) => acc + (parseFloat(r.valor_renovacao) || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        mes: anoMes,
+        renovacoes_mes: renovacoesMes,
+        clientes_renovaram: clientesRenovaram,
+        clientes_nao_renovaram: clientesNaoRenovaram,
+        total_renovacoes: renovacoesMes.length,
+        total_clientes_renovaram: clientesRenovaram.length,
+        total_clientes_nao_renovaram: clientesNaoRenovaram.length,
+        valor_total_mes: valorTotalMes
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao montar histórico:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/historico/:anoMes', async (req, res) => {
+  try {
+    const { anoMes } = req.params;
+    if (!validarAnoMes(anoMes)) {
+      return res.status(400).json({ success: false, error: 'Parâmetro anoMes inválido (use YYYY-MM)' });
+    }
+
+    const renovacoes = await renovacoesModel.getAll();
+    const antes = renovacoes.length;
+    const renovacoesFiltradas = renovacoes.filter(r => getAnoMesFromISO(r.data_renovacao) !== anoMes);
+    const removidas = antes - renovacoesFiltradas.length;
+
+    if (storage.isConfigured()) {
+      const result = await storage.writeFile('data/renovacoes.json', renovacoesFiltradas, `Remover renovacoes do mes ${anoMes}`);
+      if (!result.success) throw new Error(result.error || 'Falha ao salvar renovacoes apos remocao');
+    }
+
+    res.json({
+      success: true,
+      message: `Renovações removidas do mês ${anoMes}`,
+      removidas
+    });
+  } catch (error) {
+    console.error('Erro ao remover histórico:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const renovacoes = await renovacoesModel.getAll();
     const renovacao = renovacoes.find(r => r.id === parseInt(id));
-    
-    if (!renovacao) {
-      return res.status(404).json({
-        success: false,
-        error: 'Renovação não encontrada'
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: renovacao
-    });
+    if (!renovacao) return res.status(404).json({ success: false, error: 'Renovação não encontrada' });
+    res.json({ success: true, data: renovacao });
   } catch (error) {
-    console.error('❌ Erro ao buscar renovação:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('Erro ao buscar renovação:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-/**
- * GET /api/renovacoes/cliente/:clienteId
- * Busca renovações de um cliente específico
- */
 router.get('/cliente/:clienteId', async (req, res) => {
   try {
     const { clienteId } = req.params;
     const renovacoes = await renovacoesModel.getByClienteId(clienteId);
-    
-    res.json({
-      success: true,
-      count: renovacoes.length,
-      data: renovacoes
-    });
+    res.json({ success: true, count: renovacoes.length, data: renovacoes });
   } catch (error) {
-    console.error('❌ Erro ao buscar renovações do cliente:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('Erro ao buscar renovações do cliente:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-/**
- * POST /api/renovacoes
- * Registra uma nova renovação (apenas no histórico)
- */
 router.post('/', async (req, res) => {
   try {
     const renovacaoData = req.body;
-    
-    // Validação
-    if (!renovacaoData.cliente_id) {
-      return res.status(400).json({
-        success: false,
-        error: 'ID do cliente é obrigatório'
-      });
-    }
-    
-    // Buscar dados do cliente
+    if (!renovacaoData.cliente_id) return res.status(400).json({ success: false, error: 'ID do cliente é obrigatório' });
     const cliente = await clientesModel.getById(renovacaoData.cliente_id);
-    
-    if (!cliente) {
-      return res.status(404).json({
-        success: false,
-        error: 'Cliente não encontrado'
-      });
-    }
-    
-    // Preparar dados da renovação
+    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
     const novaRenovacao = {
       cliente_id: renovacaoData.cliente_id || cliente.id,
       cliente_nome: renovacaoData.cliente_nome || cliente.nome,
@@ -192,55 +239,22 @@ router.post('/', async (req, res) => {
       servidor: renovacaoData.servidor || cliente.servidor,
       observacoes: renovacaoData.observacoes || null
     };
-    
     const renovacaoRegistrada = await renovacoesModel.create(novaRenovacao);
-    
-    console.log('✅ Renovação registrada:', renovacaoRegistrada.cliente_nome);
-    
-    res.status(201).json({
-      success: true,
-      message: 'Renovação registrada com sucesso',
-      data: renovacaoRegistrada
-    });
+    console.log('Renovação registrada:', renovacaoRegistrada.cliente_nome);
+    res.status(201).json({ success: true, message: 'Renovação registrada com sucesso', data: renovacaoRegistrada });
   } catch (error) {
-    console.error('❌ Erro ao registrar renovação:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('Erro ao registrar renovação:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-/**
- * POST /api/renovacoes/executar
- * Executa uma renovação completa (atualiza cliente + registra histórico)
- */
 router.post('/executar', async (req, res) => {
   try {
     const { cliente_id, plano_novo, valor_renovacao } = req.body;
-    
-    // Validação
-    if (!cliente_id || !plano_novo) {
-      return res.status(400).json({
-        success: false,
-        error: 'ID do cliente e novo plano são obrigatórios'
-      });
-    }
-    
-    // Buscar cliente
+    if (!cliente_id || !plano_novo) return res.status(400).json({ success: false, error: 'ID do cliente e novo plano são obrigatórios' });
     const cliente = await clientesModel.getById(cliente_id);
-    
-    if (!cliente) {
-      return res.status(404).json({
-        success: false,
-        error: 'Cliente não encontrado'
-      });
-    }
-    
-    // Calcular novo vencimento
+    if (!cliente) return res.status(404).json({ success: false, error: 'Cliente não encontrado' });
     const novoVencimento = calcularNovoVencimento(cliente.data_vencimento, plano_novo);
-    
-    // 1. Preparar dados da renovação para histórico
     const dadosRenovacao = {
       cliente_id: cliente.id,
       cliente_nome: cliente.nome,
@@ -254,91 +268,36 @@ router.post('/executar', async (req, res) => {
       revendedor: cliente.revendedor,
       servidor: cliente.servidor
     };
-    
-    // 2. Atualizar cliente
-    const dadosAtualizacao = {
-      tipo_plano: plano_novo,
-      valor_plano: valor_renovacao,
-      data_vencimento: novoVencimento
-    };
-    
+    const dadosAtualizacao = { tipo_plano: plano_novo, valor_plano: valor_renovacao, data_vencimento: novoVencimento };
     const clienteAtualizado = await clientesModel.update(cliente_id, dadosAtualizacao);
-    
-    // 3. Registrar renovação no histórico
     const renovacaoRegistrada = await renovacoesModel.create(dadosRenovacao);
-    
-    console.log('✅ Renovação executada:', cliente.nome);
+    console.log('Renovação executada:', cliente.nome);
     console.log(`   Plano: ${obterNomePlano(plano_novo)}`);
     console.log(`   Novo vencimento: ${formatarData(novoVencimento)}`);
-    
-    res.json({
-      success: true,
-      message: 'Renovação realizada com sucesso',
-      data: {
-        cliente: clienteAtualizado,
-        renovacao: renovacaoRegistrada,
-        plano_nome: obterNomePlano(plano_novo),
-        novo_vencimento: novoVencimento,
-        novo_vencimento_formatado: formatarData(novoVencimento)
-      }
-    });
+    res.json({ success: true, message: 'Renovação realizada com sucesso', data: { cliente: clienteAtualizado, renovacao: renovacaoRegistrada, plano_nome: obterNomePlano(plano_novo), novo_vencimento: novoVencimento, novo_vencimento_formatado: formatarData(novoVencimento) } });
   } catch (error) {
-    console.error('❌ Erro ao executar renovação:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('Erro ao executar renovação:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-/**
- * GET /api/renovacoes/estatisticas/resumo
- * Retorna estatísticas de renovações
- */
 router.get('/estatisticas/resumo', async (req, res) => {
   try {
     const renovacoes = await renovacoesModel.getAll();
-    
-    // Calcular estatísticas
     const hoje = new Date();
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    
-    const renovacoesMes = renovacoes.filter(r => 
-      new Date(r.data_renovacao) >= inicioMes
-    );
-    
-    const totalValorMes = renovacoesMes.reduce((acc, r) => 
-      acc + (parseFloat(r.valor_renovacao) || 0), 0
-    );
-    
-    const totalValor = renovacoes.reduce((acc, r) => 
-      acc + (parseFloat(r.valor_renovacao) || 0), 0
-    );
-    
-    // Contagem por plano
+    const renovacoesMes = renovacoes.filter(r => new Date(r.data_renovacao) >= inicioMes);
+    const totalValorMes = renovacoesMes.reduce((acc, r) => acc + (parseFloat(r.valor_renovacao) || 0), 0);
+    const totalValor = renovacoes.reduce((acc, r) => acc + (parseFloat(r.valor_renovacao) || 0), 0);
     const contagemPorPlano = {};
-    renovacoes.forEach(r => {
-      const plano = obterNomePlano(r.plano_novo);
-      contagemPorPlano[plano] = (contagemPorPlano[plano] || 0) + 1;
-    });
-    
-    res.json({
-      success: true,
-      data: {
-        total_renovacoes: renovacoes.length,
-        renovacoes_mes_atual: renovacoesMes.length,
-        valor_total_mes: totalValorMes,
-        valor_total: totalValor,
-        contagem_por_plano: contagemPorPlano
-      }
-    });
+    renovacoes.forEach(r => { const plano = obterNomePlano(r.plano_novo); contagemPorPlano[plano] = (contagemPorPlano[plano] || 0) + 1; });
+    res.json({ success: true, data: { total_renovacoes: renovacoes.length, renovacoes_mes_atual: renovacoesMes.length, valor_total_mes: totalValorMes, valor_total: totalValor, contagem_por_plano: contagemPorPlano } });
   } catch (error) {
-    console.error('❌ Erro ao buscar estatísticas:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('Erro ao buscar estatísticas:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 module.exports = router;
+
+
